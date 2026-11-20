@@ -1,5 +1,6 @@
 package com.ilonggobistro.pos;
 
+import com.ilonggobistro.kitchen.KitchenStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PosOrderRepository extends JpaRepository<PosOrder, Long> {
+
+    @EntityGraph(attributePaths = "items")
+    Optional<PosOrder> findWithItemsById(Long id);
 
     @EntityGraph(attributePaths = "items")
     Optional<PosOrder> findWithItemsByReceiptNumberIgnoreCase(String receiptNumber);
@@ -75,4 +79,50 @@ public interface PosOrderRepository extends JpaRepository<PosOrder, Long> {
     BigDecimal sumAllRevenue(@Param("status") PosOrderStatus status);
 
     long countByStatus(PosOrderStatus status);
+
+    @EntityGraph(attributePaths = "items")
+    List<PosOrder> findByStatusAndKitchenStatusOrderByCreatedAtAscIdAsc(
+            PosOrderStatus status,
+            KitchenStatus kitchenStatus
+    );
+
+    @EntityGraph(attributePaths = "items")
+    @Query("""
+            SELECT o FROM PosOrder o
+            WHERE o.status = :status
+              AND o.kitchenStatus = :kitchenStatus
+            ORDER BY COALESCE(o.kitchenStartedAt, o.createdAt) ASC, o.id ASC
+            """)
+    List<PosOrder> findCookingQueue(
+            @Param("status") PosOrderStatus status,
+            @Param("kitchenStatus") KitchenStatus kitchenStatus
+    );
+
+    @EntityGraph(attributePaths = "items")
+    @Query("""
+            SELECT o FROM PosOrder o
+            WHERE o.status = :status
+              AND o.kitchenStatus = :kitchenStatus
+            ORDER BY COALESCE(o.kitchenReadyAt, o.createdAt) ASC, o.id ASC
+            """)
+    List<PosOrder> findReadyQueue(
+            @Param("status") PosOrderStatus status,
+            @Param("kitchenStatus") KitchenStatus kitchenStatus
+    );
+
+    @EntityGraph(attributePaths = "items")
+    @Query("""
+            SELECT o FROM PosOrder o
+            WHERE o.status = :status
+              AND o.kitchenStatus = :kitchenStatus
+              AND (o.kitchenCompletedAt >= :startOfDay OR o.createdAt >= :startOfDay)
+            ORDER BY COALESCE(o.kitchenCompletedAt, o.createdAt) DESC, o.id DESC
+            """)
+    List<PosOrder> findServedToday(
+            @Param("status") PosOrderStatus status,
+            @Param("kitchenStatus") KitchenStatus kitchenStatus,
+            @Param("startOfDay") LocalDateTime startOfDay
+    );
+
+    long countByStatusAndKitchenStatus(PosOrderStatus status, KitchenStatus kitchenStatus);
 }

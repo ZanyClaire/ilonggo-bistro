@@ -2,8 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="tracker" id="live-delivery-tracker"
-     th:attr="hx-get=${delivery != null and !delivery.status.terminal} ? @{/orders/{ref}/status-fragment(ref=${order.receiptNumber})} : null"
-     th:attrappend="hx-trigger=${delivery != null and !delivery.status.terminal} ? 'every 5s' : null"
+     th:with="shouldPoll=${(delivery != null and !delivery.status.terminal) or (delivery == null and order.kitchenStatus.name() != 'SERVED')}"
+     th:attr="hx-get=${shouldPoll} ? @{/orders/{ref}/status-fragment(ref=${order.receiptNumber})} : null"
+     th:attrappend="hx-trigger=${shouldPoll} ? 'every 5s' : null"
      hx-swap="outerHTML"
      class="space-y-6">
 
@@ -19,11 +20,16 @@
                     Estimated arrival <strong class="text-forest" th:text="${delivery.etaRange()}">25–35 mins</strong>
                 </p>
             </div>
-            <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border"
-                  th:classappend="${delivery.status.name() == 'DELIVERED'} ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                    : (${delivery.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
-                    : 'bg-amber-50 text-amber-900 border-amber-200')"
-                  th:text="${delivery.provider.label}">Provider</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border"
+                      th:classappend="${order.kitchenStatus.badgeToneClasses()}"
+                      th:text="'Kitchen: ' + ${order.kitchenStatus.customerStatusLabel(true)}">Kitchen: Waiting in Kitchen</span>
+                <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border"
+                      th:classappend="${delivery.status.name() == 'DELIVERED'} ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                        : (${delivery.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
+                        : 'bg-amber-50 text-amber-900 border-amber-200')"
+                      th:text="${delivery.provider.label}">Provider</span>
+            </div>
         </div>
 
         <!-- 5-Step Progress Bar -->
@@ -75,11 +81,38 @@
         </div>
     </div>
 
-    <!-- Pickup Order Notice -->
-    <div th:if="${delivery == null}" class="bg-white rounded-3xl border border-sand p-6 space-y-2">
-        <p class="text-xs uppercase tracking-[0.16em] text-terracotta font-semibold">Counter Pickup Order</p>
-        <h2 class="font-display text-2xl font-semibold text-espresso">Your order is being prepared for pickup</h2>
-        <p class="text-sm text-slatewarm">Show reference <strong class="font-mono text-forest" th:text="${order.receiptNumber}">OR-2026</strong> at Burgos-Osmeña St, Barotac Nuevo.</p>
+    <!-- Pickup Order Notice + Live Kitchen Progress -->
+    <div th:if="${delivery == null}" class="bg-white rounded-3xl border border-sand p-6 sm:p-8 shadow-xs space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-xs uppercase tracking-[0.16em] text-terracotta font-semibold">Counter Pickup · Live Kitchen Status</p>
+                <h2 class="font-display text-2xl sm:text-3xl font-semibold text-espresso mt-1"
+                    th:text="${order.kitchenStatus.customerStatusLabel(false)}">Waiting in Kitchen</h2>
+            </div>
+            <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border"
+                  th:classappend="${order.kitchenStatus.badgeToneClasses()}"
+                  th:text="${order.kitchenStatus.customerStatusLabel(false)}">Waiting in Kitchen</span>
+        </div>
+
+        <!-- 4-Step Kitchen Prep Progress Bar -->
+        <div class="grid grid-cols-4 gap-2 text-center pt-1">
+            <div th:each="stepLabel, iter : ${ {'Waiting in Kitchen', 'Cooking Now', 'Ready for Pickup', 'Picked Up'} }"
+                 class="space-y-2">
+                <div class="h-2 rounded-full transition-colors"
+                     th:classappend="${order.kitchenStatus.step >= (iter.index + 1)} ? 'bg-terracotta' : 'bg-sand'"></div>
+                <p class="text-[11px] font-semibold leading-tight"
+                   th:classappend="${order.kitchenStatus.step >= (iter.index + 1)} ? 'text-espresso' : 'text-slatewarm/60'"
+                   th:text="${stepLabel}">Step</p>
+            </div>
+        </div>
+
+        <p class="text-sm text-slatewarm">
+            Show reference <strong class="font-mono text-forest" th:text="${order.receiptNumber}">OR-2026</strong>
+            at Burgos-Osmeña St, Barotac Nuevo.
+            <span th:if="${order.kitchenStatus.name() != 'SERVED'}" class="text-xs block mt-1">
+                This page refreshes automatically every 5 seconds as our kitchen cooks your order.
+            </span>
+        </p>
     </div>
 </div>
 </body>

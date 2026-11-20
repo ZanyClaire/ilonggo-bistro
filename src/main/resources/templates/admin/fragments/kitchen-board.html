@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="board"
+     id="kds-board-content"
+     th:attr="data-pending-ids=${board.pendingIdsCsv},
+              data-pending-count=${board.pendingCount()},
+              data-cooking-count=${board.cookingCount()},
+              data-ready-count=${board.readyCount()},
+              data-synced-at=${board.formattedSnapshotTime()}"
+     class="space-y-5">
+
+    <!-- Inline HTMX Status Action Feedback -->
+    <div th:if="${kdsFeedback != null}"
+         class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-xs font-semibold text-emerald-900"
+         th:text="${kdsFeedback}">Updated</div>
+    <div th:if="${kdsError != null}"
+         class="rounded-2xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-900"
+         th:text="${kdsError}">Error</div>
+
+    <!-- All-Day Dish Prep Counter Bar (Aggregates PENDING + COOKING dishes for batch cooking) -->
+    <div class="rounded-3xl bg-forest text-alabaster p-4 sm:p-5 shadow-xs space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+                <span class="text-[11px] font-bold uppercase tracking-widest text-calamansi">Dish Prep Counter (All-Day Queue)</span>
+                <span class="px-2.5 py-0.5 rounded-full bg-white/15 text-xs font-bold text-white tabular-nums"
+                      th:text="${board.totalPrepDishes()} + ' dish(es) to cook'">0 dishes</span>
+            </div>
+            <span class="text-[11px] text-alabaster/75 tabular-nums"
+                  th:text="${board.pendingCount()} + ' Up Next · ' + ${board.cookingCount()} + ' Cooking · ' + ${board.readyCount()} + ' Ready'">
+                0 Up Next · 0 Cooking · 0 Ready
+            </span>
+        </div>
+
+        <div th:if="${#lists.isEmpty(board.dishPrepSummary)}" class="text-xs text-alabaster/80">
+            All clear — no pending or cooking dishes right now.
+        </div>
+
+        <div th:if="${!#lists.isEmpty(board.dishPrepSummary)}" class="flex flex-wrap gap-2">
+            <div th:each="dish : ${board.dishPrepSummary}"
+                 class="inline-flex items-center gap-2 rounded-2xl bg-white/12 border border-white/15 px-3.5 py-1.5 text-xs">
+                <span class="font-semibold text-white" th:text="${dish.itemName}">Chicken Inasal</span>
+                <span class="px-2 py-0.5 rounded-full bg-calamansi text-espresso font-extrabold tabular-nums"
+                      th:text="'× ' + ${dish.totalQuantity}">× 5</span>
+                <span th:if="${dish.cookingQuantity > 0 and dish.pendingQuantity > 0}"
+                      class="text-[10px] text-alabaster/80 tabular-nums"
+                      th:text="'(' + ${dish.pendingQuantity} + ' next · ' + ${dish.cookingQuantity} + ' on fire)'">(2 next · 3 on fire)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3-Column Live Kitchen Workflow Board -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
+
+        <!-- COLUMN 1: PENDING ("Up Next to Cook") — FIFO Oldest First -->
+        <div data-kds-col="PENDING" class="bg-linen/70 rounded-3xl border border-sand p-4 space-y-4">
+            <div class="flex items-center justify-between gap-2 pb-2 border-b border-sand">
+                <div>
+                    <h2 class="font-display text-lg font-bold text-espresso flex items-center gap-2">
+                        <span>Up Next to Cook</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-terracotta text-white text-xs font-extrabold tabular-nums"
+                              th:text="${board.pendingCount()}">0</span>
+                    </h2>
+                    <p class="text-[11px] text-slatewarm">FIFO queue — oldest order at the top</p>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(board.pendingOrders)}"
+                 class="rounded-2xl bg-white/80 border border-dashed border-sand p-8 text-center text-xs text-slatewarm">
+                No waiting tickets. New POS &amp; online orders appear here automatically.
+            </div>
+
+            <div th:each="ord, iter : ${board.pendingOrders}"
+                 th:classappend="${iter.index == 0} ? 'border-terracotta ring-2 ring-terracotta/30 shadow-md' : 'border-sand shadow-xs'"
+                 class="bg-white rounded-2xl border p-4 space-y-3.5 transition-all">
+
+                <!-- NEXT UP #1 Highlight Banner on Top FIFO Ticket -->
+                <div th:if="${iter.index == 0}"
+                     class="flex items-center justify-between gap-2 rounded-xl bg-terracotta text-white px-3 py-1.5 text-[11px] font-extrabold tracking-wider uppercase">
+                    <span>★ NEXT UP #1 — COOK FIRST</span>
+                    <span class="font-mono" th:text="${ord.formattedCreatedTimeOnly()}">11:05 AM</span>
+                </div>
+
+                <!-- Ticket Header -->
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="font-mono text-sm font-extrabold text-forest" th:text="${ord.receiptNumber}">OR-2026-00101</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                                  th:classappend="${ord.orderTypeBadgeClasses()}"
+                                  th:text="${ord.orderTypeBadgeLabel()}">Dine-In · Table 3</span>
+                        </div>
+                        <p class="text-xs text-slatewarm">
+                            <strong class="text-espresso" th:text="${ord.customerName}">Customer</strong>
+                            <span th:if="${iter.index > 0}" th:text="' · ' + ${ord.formattedCreatedTimeOnly()}"> · 11:10 AM</span>
+                        </p>
+                    </div>
+
+                    <!-- Elapsed Wait Timer with Urgency Color -->
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-extrabold border tabular-nums"
+                          th:classappend="${ord.urgencyBadgeClasses(board.snapshotTime)}">
+                        <span th:if="${ord.urgencyLevel(board.snapshotTime) == 'RED'}" class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                        <span th:text="${ord.formattedWaitTime(board.snapshotTime)}">4m ago</span>
+                    </span>
+                </div>
+
+                <!-- Large Easy-to-Read Dish List (No Prices) -->
+                <ul class="divide-y divide-sand/70 border-y border-sand/80 py-1">
+                    <li th:each="item : ${ord.items}" class="py-2 flex items-start gap-2.5">
+                        <span class="inline-flex items-center justify-center min-w-[2.25rem] px-2 py-0.5 rounded-lg bg-forest text-white text-sm font-extrabold tabular-nums"
+                              th:text="${item.quantity} + ' ×'">2 ×</span>
+                        <span class="text-base font-semibold text-espresso leading-snug" th:text="${item.itemName}">Signature La Paz Batchoy</span>
+                    </li>
+                </ul>
+
+                <!-- Highlighted Special Instructions / Notes -->
+                <div th:if="${ord.notes != null and !ord.notes.isBlank()}"
+                     class="rounded-xl bg-amber-50 border-l-4 border-amber-500 px-3 py-2 text-xs text-amber-950">
+                    <span class="font-extrabold uppercase tracking-wider text-[10px] block text-amber-800">Special Instructions</span>
+                    <span class="font-semibold text-sm" th:text="${ord.notes}">Extra toasted garlic</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          hx-target="#kds-board-poll"
+                          hx-swap="innerHTML show:none"
+                          method="post"
+                          class="flex-1">
+                        <input type="hidden" name="status" value="COOKING">
+                        <button type="submit"
+                                class="w-full rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-bold py-2.5 px-4 shadow-xs transition-colors cursor-pointer">
+                            Start Cooking →
+                        </button>
+                    </form>
+                    <a th:href="@{/admin/kitchen/{id}/kot(id=${ord.id},autoprint=1)}"
+                       target="_blank"
+                       title="Print Kitchen Order Ticket (no prices)"
+                       class="rounded-xl border border-sand bg-alabaster hover:border-forest text-espresso text-xs font-semibold py-2.5 px-3 whitespace-nowrap">
+                        Print KOT
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 2: COOKING ("In Progress") -->
+        <div data-kds-col="COOKING" class="bg-amber-50/60 rounded-3xl border border-amber-200/80 p-4 space-y-4">
+            <div class="flex items-center justify-between gap-2 pb-2 border-b border-amber-200/80">
+                <div>
+                    <h2 class="font-display text-lg font-bold text-espresso flex items-center gap-2">
+                        <span>In Progress</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-amber-600 text-white text-xs font-extrabold tabular-nums"
+                              th:text="${board.cookingCount()}">0</span>
+                    </h2>
+                    <p class="text-[11px] text-slatewarm">Currently being fired on the line</p>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(board.cookingOrders)}"
+                 class="rounded-2xl bg-white/80 border border-dashed border-amber-200 p-8 text-center text-xs text-slatewarm">
+                No tickets currently cooking.
+            </div>
+
+            <div th:each="ord : ${board.cookingOrders}"
+                 class="bg-white rounded-2xl border border-amber-300/90 p-4 shadow-xs space-y-3.5">
+
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="font-mono text-sm font-extrabold text-forest" th:text="${ord.receiptNumber}">OR-2026-00102</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                                  th:classappend="${ord.orderTypeBadgeClasses()}"
+                                  th:text="${ord.orderTypeBadgeLabel()}">Takeout</span>
+                        </div>
+                        <p class="text-xs text-slatewarm">
+                            <strong class="text-espresso" th:text="${ord.customerName}">Customer</strong>
+                            <span th:if="${ord.kitchenUpdatedBy != null}" th:text="' · Chef: ' + ${ord.kitchenUpdatedBy}"> · Chef: kitchen</span>
+                        </p>
+                    </div>
+
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-extrabold border tabular-nums"
+                          th:classappend="${ord.urgencyBadgeClasses(board.snapshotTime)}">
+                        <span th:if="${ord.urgencyLevel(board.snapshotTime) == 'RED'}" class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                        <span th:text="${ord.formattedWaitTime(board.snapshotTime)}">12m ago</span>
+                    </span>
+                </div>
+
+                <ul class="divide-y divide-sand/70 border-y border-sand/80 py-1">
+                    <li th:each="item : ${ord.items}" class="py-2 flex items-start gap-2.5">
+                        <span class="inline-flex items-center justify-center min-w-[2.25rem] px-2 py-0.5 rounded-lg bg-amber-600 text-white text-sm font-extrabold tabular-nums"
+                              th:text="${item.quantity} + ' ×'">1 ×</span>
+                        <span class="text-base font-semibold text-espresso leading-snug" th:text="${item.itemName}">KBL</span>
+                    </li>
+                </ul>
+
+                <div th:if="${ord.notes != null and !ord.notes.isBlank()}"
+                     class="rounded-xl bg-amber-50 border-l-4 border-amber-500 px-3 py-2 text-xs text-amber-950">
+                    <span class="font-extrabold uppercase tracking-wider text-[10px] block text-amber-800">Special Instructions</span>
+                    <span class="font-semibold text-sm" th:text="${ord.notes}">Separate broth</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          hx-target="#kds-board-poll"
+                          hx-swap="innerHTML show:none"
+                          method="post"
+                          class="flex-1">
+                        <input type="hidden" name="status" value="READY">
+                        <button type="submit"
+                                class="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold py-2.5 px-4 shadow-xs transition-colors cursor-pointer">
+                            Mark Ready ✓
+                        </button>
+                    </form>
+                    <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          hx-target="#kds-board-poll"
+                          hx-swap="innerHTML show:none"
+                          method="post">
+                        <input type="hidden" name="status" value="PENDING">
+                        <button type="submit"
+                                title="Move back to Up Next"
+                                class="rounded-xl border border-sand bg-white hover:border-espresso text-slatewarm hover:text-espresso text-xs font-semibold py-2.5 px-3 cursor-pointer">
+                            ← Back
+                        </button>
+                    </form>
+                    <a th:href="@{/admin/kitchen/{id}/kot(id=${ord.id},autoprint=1)}"
+                       target="_blank"
+                       class="rounded-xl border border-sand bg-alabaster hover:border-forest text-espresso text-xs font-semibold py-2.5 px-3 whitespace-nowrap">
+                        Print KOT
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMN 3: READY ("Ready for Serving / Pickup / Rider") -->
+        <div data-kds-col="READY" class="bg-emerald-50/60 rounded-3xl border border-emerald-200/80 p-4 space-y-4">
+            <div class="flex items-center justify-between gap-2 pb-2 border-b border-emerald-200/80">
+                <div>
+                    <h2 class="font-display text-lg font-bold text-espresso flex items-center gap-2">
+                        <span>Ready for Serving / Pickup / Rider</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-extrabold tabular-nums"
+                              th:text="${board.readyCount()}">0</span>
+                    </h2>
+                    <p class="text-[11px] text-slatewarm">Pass to waitstaff, pickup counter, or courier</p>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(board.readyOrders)}"
+                 class="rounded-2xl bg-white/80 border border-dashed border-emerald-200 p-8 text-center text-xs text-slatewarm">
+                No tickets waiting at the pass.
+            </div>
+
+            <div th:each="ord : ${board.readyOrders}"
+                 class="bg-white rounded-2xl border border-emerald-300 p-4 shadow-xs space-y-3.5">
+
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="font-mono text-sm font-extrabold text-forest" th:text="${ord.receiptNumber}">OR-2026-DEL01</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                                  th:classappend="${ord.orderTypeBadgeClasses()}"
+                                  th:text="${ord.orderTypeBadgeLabel()}">Delivery</span>
+                        </div>
+                        <p class="text-xs text-slatewarm">
+                            <strong class="text-espresso" th:text="${ord.customerName}">Customer</strong>
+                            <span th:if="${ord.orderType.name() == 'DELIVERY'}" class="text-terracotta font-semibold"> · Ready for Rider</span>
+                            <span th:if="${ord.orderType.name() == 'PICKUP'}" class="text-sky-800 font-semibold"> · Call for Pickup</span>
+                        </p>
+                    </div>
+
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold border tabular-nums"
+                          th:classappend="${ord.urgencyBadgeClasses(board.snapshotTime)}"
+                          th:text="${ord.formattedWaitTime(board.snapshotTime)}">8m ago</span>
+                </div>
+
+                <ul class="divide-y divide-sand/70 border-y border-sand/80 py-1">
+                    <li th:each="item : ${ord.items}" class="py-2 flex items-start gap-2.5">
+                        <span class="inline-flex items-center justify-center min-w-[2.25rem] px-2 py-0.5 rounded-lg bg-emerald-700 text-white text-sm font-extrabold tabular-nums"
+                              th:text="${item.quantity} + ' ×'">1 ×</span>
+                        <span class="text-base font-semibold text-espresso leading-snug" th:text="${item.itemName}">Chicken Inasal</span>
+                    </li>
+                </ul>
+
+                <div th:if="${ord.notes != null and !ord.notes.isBlank()}"
+                     class="rounded-xl bg-amber-50 border-l-4 border-amber-500 px-3 py-2 text-xs text-amber-950">
+                    <span class="font-extrabold uppercase tracking-wider text-[10px] block text-amber-800">Special Instructions</span>
+                    <span class="font-semibold text-sm" th:text="${ord.notes}">Ring gate bell</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          hx-target="#kds-board-poll"
+                          hx-swap="innerHTML show:none"
+                          method="post"
+                          class="flex-1">
+                        <input type="hidden" name="status" value="SERVED">
+                        <button type="submit"
+                                class="w-full rounded-xl bg-forest hover:bg-forest-soft text-white text-xs sm:text-sm font-bold py-2.5 px-4 shadow-xs transition-colors cursor-pointer">
+                            Mark Served / Handed Off
+                        </button>
+                    </form>
+                    <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                          hx-target="#kds-board-poll"
+                          hx-swap="innerHTML show:none"
+                          method="post">
+                        <input type="hidden" name="status" value="COOKING">
+                        <button type="submit"
+                                title="Return to Cooking"
+                                class="rounded-xl border border-sand bg-white hover:border-espresso text-slatewarm hover:text-espresso text-xs font-semibold py-2.5 px-3 cursor-pointer">
+                            ← Cook
+                        </button>
+                    </form>
+                    <a th:href="@{/admin/kitchen/{id}/kot(id=${ord.id},autoprint=1)}"
+                       target="_blank"
+                       class="rounded-xl border border-sand bg-alabaster hover:border-forest text-espresso text-xs font-semibold py-2.5 px-3 whitespace-nowrap">
+                        Print KOT
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collapsible "Recently Served (Today)" Drawer with Recall / Undo -->
+    <details id="kds-served-drawer" class="bg-white rounded-3xl border border-sand shadow-xs overflow-hidden">
+        <summary class="px-5 py-4 cursor-pointer select-none flex items-center justify-between gap-3 hover:bg-alabaster transition-colors">
+            <div class="flex items-center gap-2.5">
+                <span class="font-display text-lg font-semibold text-espresso">Recently Served (Today)</span>
+                <span class="px-2.5 py-0.5 rounded-full bg-linen border border-sand text-xs font-bold text-espresso tabular-nums"
+                      th:text="${board.servedCount()}">0</span>
+            </div>
+            <span class="text-xs font-semibold text-slatewarm">Click to expand / recall bumped tickets ▾</span>
+        </summary>
+
+        <div class="p-5 pt-2 border-t border-sand">
+            <p th:if="${#lists.isEmpty(board.servedTodayOrders)}" class="text-xs text-slatewarm py-4 text-center">
+                No tickets have been marked served yet today.
+            </p>
+
+            <div th:if="${!#lists.isEmpty(board.servedTodayOrders)}"
+                 class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2">
+                <div th:each="ord : ${board.servedTodayOrders}"
+                     class="rounded-2xl bg-alabaster border border-sand p-4 space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="font-mono text-xs font-bold text-forest" th:text="${ord.receiptNumber}">OR-2026-00101</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                      th:classappend="${ord.orderTypeBadgeClasses()}"
+                                      th:text="${ord.orderTypeBadgeLabel()}">Dine-In</span>
+                            </div>
+                            <p class="text-xs font-semibold text-espresso mt-1" th:text="${ord.customerName}">Customer</p>
+                        </div>
+                        <span class="text-[11px] font-semibold text-slatewarm tabular-nums"
+                              th:text="'Served ' + ${ord.formattedKitchenCompletedAt()}">Served 11:20 AM</span>
+                    </div>
+
+                    <ul class="text-xs text-espresso space-y-1">
+                        <li th:each="item : ${ord.items}" th:text="${item.quantity} + ' × ' + ${item.itemName}">1 × Dish</li>
+                    </ul>
+
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-sand/80">
+                        <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                              th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                              hx-target="#kds-board-poll"
+                              hx-swap="innerHTML show:none"
+                              method="post">
+                            <input type="hidden" name="status" value="READY">
+                            <button type="submit"
+                                    class="rounded-xl bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-900 text-xs font-semibold px-3 py-1.5 cursor-pointer">
+                                ↺ Recall to Ready
+                            </button>
+                        </form>
+                        <form th:action="@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                              th:attr="hx-post=@{/admin/kitchen/{id}/status(id=${ord.id})}"
+                              hx-target="#kds-board-poll"
+                              hx-swap="innerHTML show:none"
+                              method="post">
+                            <input type="hidden" name="status" value="COOKING">
+                            <button type="submit"
+                                    class="rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-amber-950 text-xs font-semibold px-3 py-1.5 cursor-pointer">
+                                ↺ Recall to Cooking
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </details>
+</div>
+</body>
+</html>

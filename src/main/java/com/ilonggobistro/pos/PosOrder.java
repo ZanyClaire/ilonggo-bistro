@@ -1,5 +1,6 @@
 package com.ilonggobistro.pos;
 
+import com.ilonggobistro.kitchen.KitchenStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +16,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -27,6 +29,8 @@ public class PosOrder {
 
     private static final DateTimeFormatter DATE_TIME_FMT =
             DateTimeFormatter.ofPattern("MMM d, yyyy · h:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter TIME_ONLY_FMT =
+            DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -92,6 +96,22 @@ public class PosOrder {
     @Column(name = "synced_from_offline", nullable = false)
     private boolean syncedFromOffline = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kitchen_status", nullable = false, length = 24)
+    private KitchenStatus kitchenStatus = KitchenStatus.PENDING;
+
+    @Column(name = "kitchen_started_at")
+    private LocalDateTime kitchenStartedAt;
+
+    @Column(name = "kitchen_ready_at")
+    private LocalDateTime kitchenReadyAt;
+
+    @Column(name = "kitchen_completed_at")
+    private LocalDateTime kitchenCompletedAt;
+
+    @Column(name = "kitchen_updated_by", length = 80)
+    private String kitchenUpdatedBy;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -135,6 +155,9 @@ public class PosOrder {
         }
         if (this.status == null) {
             this.status = PosOrderStatus.PAID;
+        }
+        if (this.kitchenStatus == null) {
+            this.kitchenStatus = KitchenStatus.PENDING;
         }
     }
 
@@ -293,6 +316,114 @@ public class PosOrder {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public KitchenStatus getKitchenStatus() {
+        return kitchenStatus != null ? kitchenStatus : KitchenStatus.PENDING;
+    }
+
+    public void setKitchenStatus(KitchenStatus kitchenStatus) {
+        this.kitchenStatus = kitchenStatus != null ? kitchenStatus : KitchenStatus.PENDING;
+    }
+
+    public LocalDateTime getKitchenStartedAt() {
+        return kitchenStartedAt;
+    }
+
+    public void setKitchenStartedAt(LocalDateTime kitchenStartedAt) {
+        this.kitchenStartedAt = kitchenStartedAt;
+    }
+
+    public LocalDateTime getKitchenReadyAt() {
+        return kitchenReadyAt;
+    }
+
+    public void setKitchenReadyAt(LocalDateTime kitchenReadyAt) {
+        this.kitchenReadyAt = kitchenReadyAt;
+    }
+
+    public LocalDateTime getKitchenCompletedAt() {
+        return kitchenCompletedAt;
+    }
+
+    public void setKitchenCompletedAt(LocalDateTime kitchenCompletedAt) {
+        this.kitchenCompletedAt = kitchenCompletedAt;
+    }
+
+    public String getKitchenUpdatedBy() {
+        return kitchenUpdatedBy;
+    }
+
+    public void setKitchenUpdatedBy(String kitchenUpdatedBy) {
+        this.kitchenUpdatedBy = kitchenUpdatedBy;
+    }
+
+    public long elapsedMinutes(LocalDateTime referenceNow) {
+        if (createdAt == null || referenceNow == null) {
+            return 0L;
+        }
+        long mins = Duration.between(createdAt, referenceNow).toMinutes();
+        return Math.max(0L, mins);
+    }
+
+    public String formattedWaitTime(LocalDateTime referenceNow) {
+        long mins = elapsedMinutes(referenceNow);
+        if (mins < 1) {
+            return "<1m ago";
+        }
+        if (mins < 60) {
+            return mins + "m ago";
+        }
+        long hours = mins / 60;
+        long rem = mins % 60;
+        return rem == 0 ? hours + "h ago" : hours + "h " + rem + "m ago";
+    }
+
+    public String urgencyLevel(LocalDateTime referenceNow) {
+        long mins = elapsedMinutes(referenceNow);
+        if (mins > 20) {
+            return "RED";
+        }
+        if (mins >= 10) {
+            return "AMBER";
+        }
+        return "GREEN";
+    }
+
+    public String urgencyBadgeClasses(LocalDateTime referenceNow) {
+        return switch (urgencyLevel(referenceNow)) {
+            case "RED" -> "bg-red-100 text-red-900 border-red-300";
+            case "AMBER" -> "bg-amber-100 text-amber-950 border-amber-300";
+            default -> "bg-emerald-100 text-emerald-900 border-emerald-200";
+        };
+    }
+
+    public String orderTypeBadgeLabel() {
+        if (orderType == OrderType.DINE_IN && tableNumber != null && !tableNumber.isBlank()) {
+            return "Dine-In · " + tableNumber;
+        }
+        return orderType != null ? orderType.getLabel() : "Order";
+    }
+
+    public String orderTypeBadgeClasses() {
+        if (orderType == null) {
+            return "bg-linen text-espresso border-sand";
+        }
+        return switch (orderType) {
+            case DINE_IN -> "bg-forest text-white border-forest";
+            case TAKEOUT -> "bg-amber-100 text-amber-950 border-amber-300";
+            case PICKUP -> "bg-sky-100 text-sky-900 border-sky-200";
+            case DELIVERY -> "bg-terracotta text-white border-terracotta";
+        };
+    }
+
+    public String formattedKitchenCompletedAt() {
+        LocalDateTime ts = kitchenCompletedAt != null ? kitchenCompletedAt : createdAt;
+        return ts != null ? ts.format(TIME_ONLY_FMT) : "";
+    }
+
+    public String formattedCreatedTimeOnly() {
+        return createdAt != null ? createdAt.format(TIME_ONLY_FMT) : "";
     }
 
     public List<PosOrderItem> getItems() {

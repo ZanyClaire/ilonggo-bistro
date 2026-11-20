@@ -85,11 +85,15 @@ public class SecurityConfig {
                     auth.requestMatchers("/admin/reservations/**", "/admin/inquiries/**")
                             .hasAnyRole("ADMIN", "BOOKING_HOST");
 
-                    // 7. Kitchen Menu & Categories (ADMIN + KITCHEN_STAFF)
+                    // 7. Kitchen Display Queue (KDS) — ADMIN, KITCHEN_STAFF, CASHIER (BOOKING_HOST blocked -> 403)
+                    auth.requestMatchers("/admin/kitchen", "/admin/kitchen/**")
+                            .hasAnyRole("ADMIN", "KITCHEN_STAFF", "CASHIER");
+
+                    // 8. Kitchen Menu & Categories (ADMIN + KITCHEN_STAFF)
                     auth.requestMatchers("/admin/menu/**", "/admin/categories/**")
                             .hasAnyRole("ADMIN", "KITCHEN_STAFF");
 
-                    // 8. Catch-all for any future /admin/** routes
+                    // 9. Catch-all for any future /admin/** routes
                     auth.requestMatchers("/admin/**").hasRole("ADMIN");
                     auth.anyRequest().permitAll();
                 })

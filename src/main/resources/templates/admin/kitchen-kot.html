@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'KOT ' + ${order.receiptNumber}">Kitchen Order Ticket</title>
+    <style th:inline="css">
+        @page {
+            size: [[${paperWidthMm}]]mm auto;
+            margin: 0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 8px;
+            background: #f3f1ec;
+            font-family: "Courier New", Consolas, monospace;
+            color: #000000;
+            font-size: [[${paperWidthMm <= 58 ? '12px' : '13px'}]];
+            line-height: 1.35;
+        }
+        .toolbar {
+            width: [[${paperWidthMm}]]mm;
+            max-width: 100%;
+            margin: 0 auto 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+        .toolbar button, .toolbar a {
+            padding: 7px 12px;
+            border: none;
+            border-radius: 999px;
+            font-family: system-ui, sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-print { background: #1F3A2E; color: #fff; }
+        .btn-alt { background: #fff; color: #1F3A2E; border: 1px solid #ccc; }
+        .btn-close { background: #e5e5e5; color: #111; }
+        .ticket {
+            width: [[${paperWidthMm}]]mm;
+            max-width: 100%;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 3.5mm 2.5mm 6mm;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: 800; }
+        .kot-banner {
+            border: 2px solid #000;
+            padding: 4px 6px;
+            margin: 6px 0;
+            text-align: center;
+            font-size: [[${paperWidthMm <= 58 ? '14px' : '16px'}]];
+            font-weight: 900;
+            letter-spacing: 0.05em;
+        }
+        .divider { border-top: 1px dashed #000; margin: 7px 0; }
+        .row { display: flex; justify-content: space-between; gap: 6px; }
+        .dish-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: [[${paperWidthMm <= 58 ? '14px' : '16px'}]];
+            font-weight: 800;
+            border-bottom: 1px dotted #999;
+        }
+        .dish-qty {
+            min-width: 34px;
+            font-size: [[${paperWidthMm <= 58 ? '15px' : '18px'}]];
+        }
+        .notes-box {
+            border: 2px dashed #000;
+            padding: 6px;
+            margin-top: 8px;
+            font-size: [[${paperWidthMm <= 58 ? '12px' : '14px'}]];
+            font-weight: 700;
+        }
+        .sub { font-size: [[${paperWidthMm <= 58 ? '10px' : '11px'}]]; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .toolbar { display: none !important; }
+            .ticket { margin: 0; padding: 2mm 1.5mm 5mm; width: [[${paperWidthMm}]]mm; }
+        }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <button type="button" class="btn-print" onclick="window.print()">Print [[${paperWidthMm}]]mm KOT</button>
+    <a th:href="@{/admin/kitchen/{id}/kot(id=${order.id},width=${paperWidthMm == 80 ? 58 : 80})}"
+       class="btn-alt"
+       th:text="${paperWidthMm == 80 ? 'Switch to 58mm' : 'Switch to 80mm'}">Switch Width</a>
+    <button type="button" class="btn-close" onclick="window.close()">Close</button>
+</div>
+
+<div class="ticket">
+    <div class="center">
+        <div class="bold" style="font-size: 15px;" th:text="${#strings.toUpperCase(storeProfile.bistroName())}">ILONGGO BISTRO</div>
+        <div class="sub bold">*** KITCHEN ORDER TICKET ***</div>
+    </div>
+
+    <div class="kot-banner" th:text="${#strings.toUpperCase(order.orderTypeBadgeLabel())}">DINE-IN · TABLE 3</div>
+
+    <div class="row"><span>Ticket #:</span><span class="bold" th:text="${order.receiptNumber}">OR-2026-00101</span></div>
+    <div class="row"><span>Time:</span><span class="bold" th:text="${order.formattedCreatedAt()}">Nov 20, 2026 · 11:15 AM</span></div>
+    <div class="row"><span>Guest:</span><span class="bold" th:text="${order.customerName}">Walk-in Guest</span></div>
+    <div class="row"><span>Status:</span><span class="bold" th:text="${order.kitchenStatus.boardLabel}">Up Next</span></div>
+
+    <div class="divider"></div>
+    <div class="sub bold">QTY  DISH TO PREPARE</div>
+
+    <div th:each="line : ${order.items}" class="dish-line">
+        <span class="dish-qty" th:text="${line.quantity} + 'x'">2x</span>
+        <span th:text="${line.itemName}">Signature La Paz Batchoy</span>
+    </div>
+
+    <div th:if="${order.notes != null and !order.notes.isBlank()}" class="notes-box">
+        <div class="sub">SPECIAL INSTRUCTIONS:</div>
+        <div th:text="${order.notes}">Extra toasted garlic</div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="center sub bold" th:text="'TOTAL ITEMS: ' + ${order.totalItemCount()} + ' · NO PRICES (KITCHEN COPY)'">
+        TOTAL ITEMS: 3 · NO PRICES (KITCHEN COPY)
+    </div>
+</div>
+
+<script th:if="${autoPrint}">
+    window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 180);
+    });
+</script>
+</body>
+</html>

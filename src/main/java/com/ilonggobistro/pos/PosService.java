@@ -1,5 +1,6 @@
 package com.ilonggobistro.pos;
 
+import com.ilonggobistro.kitchen.KitchenStatus;
 import com.ilonggobistro.menu.MenuItem;
 import com.ilonggobistro.menu.MenuItemRepository;
 import com.ilonggobistro.shared.ResourceNotFoundException;
@@ -303,6 +304,8 @@ public class PosService {
         PosOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found."));
         order.setStatus(PosOrderStatus.VOIDED);
+        order.setKitchenStatus(KitchenStatus.SERVED);
+        order.setKitchenCompletedAt(LocalDateTime.now(clock));
         return orderRepository.save(order);
     }
 

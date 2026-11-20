@@ -40,7 +40,7 @@ class AdminSecurityTest {
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void adminCanAccessAllStaffPagesAndToggleMenuAvailabilityViaHtmx() throws Exception {
         for (String route : new String[]{
-                "/admin", "/admin/pos", "/admin/deliveries", "/admin/sales", "/admin/categories",
+                "/admin", "/admin/pos", "/admin/kitchen", "/admin/deliveries", "/admin/sales", "/admin/categories",
                 "/admin/events", "/admin/menu", "/admin/reservations", "/admin/gallery",
                 "/admin/inquiries", "/admin/staff", "/admin/account", "/admin/settings"}) {
             mockMvc.perform(get(route))

@@ -34,6 +34,18 @@ public class StaffLoginSuccessHandler extends SavedRequestAwareAuthenticationSuc
             getRedirectStrategy().sendRedirect(request, response, "/admin/account?mustChange=1");
             return;
         }
+        if (staff.isPresent() && "KITCHEN_STAFF".equalsIgnoreCase(staff.get().getRole())) {
+            getRedirectStrategy().sendRedirect(request, response, "/admin/kitchen");
+            return;
+        }
+        boolean isKitchenOnly = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_KITCHEN_STAFF".equals(a.getAuthority()))
+                && authentication.getAuthorities().stream()
+                .noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (isKitchenOnly) {
+            getRedirectStrategy().sendRedirect(request, response, "/admin/kitchen");
+            return;
+        }
         super.onAuthenticationSuccess(request, response, authentication);
     }
 }

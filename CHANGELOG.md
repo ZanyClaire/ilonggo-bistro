@@ -13,6 +13,25 @@ All notable versions of **Ilonggo Bistro** are saved as annotated Git tags (`vMA
 
 ---
 
+## [v1.3.0] - 2026-11-20
+### Added — Live Kitchen Display System (KDS) & Kitchen Order Queue
+- **Database Migration (`V8__kitchen_display_queue.sql`) & Domain Updates:**
+  - Extended `pos_orders` with `kitchen_status` (`PENDING`, `COOKING`, `READY`, `SERVED`), `kitchen_started_at`, `kitchen_ready_at`, `kitchen_completed_at`, and `kitchen_updated_by`, plus composite queue index `idx_pos_orders_kitchen_queue`.
+  - Cleanly backfilled existing `VOIDED` and pre-today historical orders to `SERVED` so older receipts never flood the live KDS board; voiding an order via `PosService.voidOrder` automatically excludes it from active kitchen queues and prep counts.
+- **Live Auto-Refreshing Kitchen Display Board (`/admin/kitchen` & `/admin/kitchen/board`):**
+  - 5-second HTMX polling (`hx-swap="innerHTML show:none"`) that preserves scroll position, active tablet column filter tab, and Recently Served drawer state, plus a manual **Refresh Now** button and a Web Audio API **New Order Ding** sound toggle (zero external audio files).
+  - 3 workflow columns — **Up Next to Cook (`PENDING`, FIFO oldest-first with `NEXT UP #1` badge)**, **In Progress (`COOKING`)**, and **Ready for Serving / Pickup / Rider (`READY`)** — plus a collapsible **Recently Served (Today)** drawer with 1-click **Recall to Ready** and **Recall to Cooking** undo controls.
+  - Top **Dish Prep Counter (All-Day Queue)** bar aggregating total dish quantities across all `PENDING` and `COOKING` tickets for batch cooking.
+  - High-legibility Kitchen Ticket Cards featuring Order Type + Table # badges, live elapsed wait timers with green (`<10m`), amber (`10–20m`), and red (`>20m`) urgency styling, large quantity × dish lists, highlighted Special Instructions, 1-click HTMX transitions, and compact zero-price **Print KOT** thermal tickets (`/admin/kitchen/{id}/kot`).
+- **Role-Based Access & Cross-Screen Integrations:**
+  - `ADMIN`, `KITCHEN_STAFF`, and `CASHIER` can view and advance `/admin/kitchen/**`; `BOOKING_HOST` is blocked (`403`).
+  - Prominent **Kitchen Queue (KDS)** sidebar and dashboard links with live pending ticket count badge (`kitchenPendingCount`).
+  - `KITCHEN_STAFF` users redirect directly to `/admin/kitchen` on sign-in (unless `mustChangePassword` is enabled).
+  - Delivery Dispatch Console (`/admin/deliveries`) and Customer Order Tracking (`/orders/{receiptNumber}`) now display live kitchen preparation badges (plus live 5s auto-polling & 4-step kitchen progress for Counter Pickup orders).
+- **Automated Verification:** 40 JUnit 5 + Spring MockMvc tests passing (including 8 new KDS tests covering RBAC, FIFO ordering, workflow/recall transitions, void exclusion, dish prep counts, zero-price KOT, login redirect, and tracking sync).
+
+---
+
 ## [v1.2.0] - 2026-11-20
 ### Thermal Receipt Printer Integration (ESC/POS + 58mm / 80mm)
 - **Direct Hardware Printing (`ReceiptPrinterService` + `EscPosReceiptFormatter`):**

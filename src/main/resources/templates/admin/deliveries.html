@@ -58,6 +58,9 @@
                                 : (${del.status.name() == 'OUT_OF_COVERAGE' or del.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
                                 : 'bg-amber-50 text-amber-900 border-amber-200')"
                               th:text="${del.status.label}">Awaiting Dispatch</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                              th:classappend="${del.order.kitchenStatus.badgeToneClasses()}"
+                              th:text="'Kitchen: ' + ${del.order.kitchenStatus.customerStatusLabel(true)}">Kitchen: Waiting in Kitchen</span>
                         <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-linen text-espresso"
                               th:text="${del.provider.label}">Provider</span>
                         <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"

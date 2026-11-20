@@ -51,6 +51,17 @@
                th:classappend="${currentPath == '/admin/pos' or currentPath.startsWith('/admin/pos/receipt')} ? 'bg-terracotta text-white font-semibold' : 'text-calamansi hover:bg-white/10 hover:text-white font-semibold'"
                class="block px-4 py-2.5 rounded-xl transition-colors">POS Terminal &amp; Receipt</a>
 
+            <a sec:authorize="hasAnyRole('ADMIN','KITCHEN_STAFF','CASHIER')"
+               th:href="@{/admin/kitchen}"
+               th:classappend="${currentPath.startsWith('/admin/kitchen')} ? 'bg-terracotta text-white font-semibold' : 'text-calamansi hover:bg-white/10 hover:text-white font-semibold'"
+               class="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl transition-colors">
+                <span>Kitchen Queue (KDS)</span>
+                <span id="sidebar-kds-badge"
+                      th:classappend="${kitchenPendingCount == null or kitchenPendingCount == 0} ? 'hidden' : ''"
+                      class="px-2 py-0.5 rounded-full bg-calamansi text-espresso text-[11px] font-extrabold tabular-nums"
+                      th:text="${kitchenPendingCount}">0</span>
+            </a>
+
             <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
                th:href="@{/admin/pos/printer}"
                th:classappend="${currentPath.startsWith('/admin/pos/printer')} ? 'bg-white/15 text-white' : 'text-alabaster/75 hover:bg-white/10 hover:text-white'"
@@ -135,6 +146,10 @@
     <header class="no-print bg-white border-b border-sand px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <h1 class="font-display text-2xl font-semibold text-espresso" th:text="${pageTitle}">Dashboard</h1>
         <div class="flex items-center gap-3 text-xs">
+            <a sec:authorize="hasAnyRole('ADMIN','KITCHEN_STAFF','CASHIER')"
+               th:href="@{/admin/kitchen}" class="px-3.5 py-1.5 rounded-full bg-forest hover:bg-forest-soft text-white font-semibold transition-colors">
+                Kitchen Queue
+            </a>
             <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
                th:href="@{/admin/pos}" class="px-3.5 py-1.5 rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold transition-colors">
                 Open POS

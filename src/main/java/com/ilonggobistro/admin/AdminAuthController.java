@@ -94,6 +94,9 @@ public class AdminAuthController {
         if (staff.isMustChangePassword()) {
             return "redirect:/admin/account?mustChange=1";
         }
+        if ("KITCHEN_STAFF".equalsIgnoreCase(staff.getRole())) {
+            return "redirect:/admin/kitchen";
+        }
         return "redirect:/admin";
     }
 
