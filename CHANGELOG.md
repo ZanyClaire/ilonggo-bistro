@@ -13,6 +13,19 @@ All notable versions of **Ilonggo Bistro** are saved as annotated Git tags (`vMA
 
 ---
 
+## [v1.2.0] - 2026-11-20
+### Thermal Receipt Printer Integration (ESC/POS + 58mm / 80mm)
+- **Direct Hardware Printing (`ReceiptPrinterService` + `EscPosReceiptFormatter`):**
+  - Supports **Windows USB / Bluetooth Thermal Printers** via Java `javax.print` raw ESC/POS dispatch (auto-discovers installed OS printers).
+  - Supports **Network LAN / Wi-Fi Thermal Printers** via raw TCP Port `9100` socket.
+  - Supports both **80mm (48 columns)** and **58mm (32 columns)** thermal paper rolls with ASCII-safe PHP formatting, word wrapping, optional **auto paper cut (`GS V 66 0`)**, and optional **RJ11 cash drawer kick (`ESC p`)**.
+- **Dedicated Browser Thermal Print Views (`/admin/pos/receipt/{ref}/thermal`):**
+  - Zero-chrome `@page` 80mm & 58mm thermal slip templates with auto-print support for any browser, tablet, or phone.
+- **Receipt Printer Setup Page (`/admin/pos/printer`):**
+  - Accessible to `ADMIN` and `CASHIER`, featuring detected Windows printer picker, LAN IP/Port fields, roll width selector, custom footer note, live ESC/POS column preview, **Send Test Slip**, **Kick Cash Drawer**, and optional **Auto-Print after Checkout**.
+
+---
+
 ## [v1.1.0] - 2026-11-20
 ### Added — Offline-First PWA POS & Auto-Sync (Option 1)
 - **Installable POS PWA & Service Worker:** Added `manifest.webmanifest` ("Ilonggo Bistro POS") and `sw-pos.js` caching `/admin/pos`, `/admin/pos/catalog.json`, compiled CSS, JS, and dish images so cashiers can keep operating even during internet outages.

@@ -48,8 +48,13 @@
 
             <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
                th:href="@{/admin/pos}"
-               th:classappend="${currentPath.startsWith('/admin/pos')} ? 'bg-terracotta text-white font-semibold' : 'text-calamansi hover:bg-white/10 hover:text-white font-semibold'"
+               th:classappend="${currentPath == '/admin/pos' or currentPath.startsWith('/admin/pos/receipt')} ? 'bg-terracotta text-white font-semibold' : 'text-calamansi hover:bg-white/10 hover:text-white font-semibold'"
                class="block px-4 py-2.5 rounded-xl transition-colors">POS Terminal &amp; Receipt</a>
+
+            <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
+               th:href="@{/admin/pos/printer}"
+               th:classappend="${currentPath.startsWith('/admin/pos/printer')} ? 'bg-white/15 text-white' : 'text-alabaster/75 hover:bg-white/10 hover:text-white'"
+               class="block px-4 py-2.5 rounded-xl transition-colors">Receipt Printer Setup</a>
 
             <a sec:authorize="hasAnyRole('ADMIN','CASHIER','KITCHEN_STAFF')"
                th:href="@{/admin/deliveries}"

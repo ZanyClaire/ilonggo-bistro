@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Thermal Receipt ' + ${order.receiptNumber}">Thermal Receipt</title>
+    <style th:inline="css">
+        @page {
+            size: [[${paperWidthMm}]]mm auto;
+            margin: 0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 6px;
+            background: #f5f5f5;
+            font-family: "Courier New", Consolas, monospace;
+            color: #000000;
+            font-size: [[${paperWidthMm <= 58 ? '11px' : '12px'}]];
+            line-height: 1.35;
+        }
+        .ticket {
+            width: [[${paperWidthMm}]]mm;
+            max-width: 100%;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 3mm 2.5mm 6mm;
+        }
+        .toolbar {
+            width: [[${paperWidthMm}]]mm;
+            max-width: 100%;
+            margin: 0 auto 10px;
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .toolbar button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 999px;
+            font-family: system-ui, sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-print { background: #1F3A2E; color: #fff; }
+        .btn-close { background: #e5e5e5; color: #111; }
+        .center { text-align: center; }
+        .bold { font-weight: 700; }
+        .title { font-size: [[${paperWidthMm <= 58 ? '15px' : '18px'}]]; font-weight: 800; letter-spacing: 0.04em; }
+        .divider { border-top: 1px dashed #000; margin: 6px 0; }
+        .row { display: flex; justify-content: space-between; gap: 6px; }
+        .total-row { font-size: [[${paperWidthMm <= 58 ? '13px' : '15px'}]]; font-weight: 800; }
+        .sub { font-size: [[${paperWidthMm <= 58 ? '10px' : '11px'}]]; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .toolbar { display: none !important; }
+            .ticket { margin: 0; padding: 2mm 1.5mm 4mm; width: [[${paperWidthMm}]]mm; }
+        }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <button type="button" class="btn-print" onclick="window.print()">Print [[${paperWidthMm}]]mm Receipt</button>
+    <button type="button" class="btn-close" onclick="window.close()">Close</button>
+</div>
+
+<div class="ticket">
+    <div class="center">
+        <div class="title" th:text="${#strings.toUpperCase(storeProfile.bistroName())}">ILONGGO BISTRO</div>
+        <div class="sub" th:text="${storeProfile.addressLine()}">Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo</div>
+        <div class="sub" th:if="${!storeProfile.plusCode().isBlank()}" th:text="'Plus Code: ' + ${storeProfile.plusCode()}">VPW2+QF</div>
+        <div class="sub" th:if="${!storeProfile.phoneNumber().isBlank()}" th:text="'Tel: ' + ${storeProfile.phoneNumber()}">Tel</div>
+        <div class="bold" style="margin-top:4px;"
+             th:text="${order.status.name() == 'VOIDED' ? '*** VOIDED RECEIPT ***' : 'ORDER RECEIPT - PAID'}">ORDER RECEIPT</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row"><span>Receipt #:</span><span class="bold" th:text="${order.receiptNumber}">OR-2026</span></div>
+    <div class="row" th:if="${order.offlineReceiptNumber != null}"><span>Offline Ref:</span><span th:text="${order.offlineReceiptNumber}">OFF</span></div>
+    <div class="row"><span>Date:</span><span th:text="${order.formattedCreatedAt()}">Date</span></div>
+    <div class="row"><span>Customer:</span><span class="bold" th:text="${order.customerName}">Guest</span></div>
+    <div class="row">
+        <span>Service:</span>
+        <span th:text="${order.orderType.label} + (${order.tableNumber != null and !order.tableNumber.isBlank()} ? ' / ' + ${order.tableNumber} : '')">Dine-In</span>
+    </div>
+    <div class="row"><span>Cashier:</span><span th:text="${order.cashierUsername}">admin</span></div>
+
+    <div class="divider"></div>
+
+    <div class="row bold sub"><span>QTY ITEM</span><span>AMOUNT</span></div>
+    <div th:each="line : ${order.items}" style="margin: 3px 0;">
+        <div class="row">
+            <span class="bold" th:text="${line.quantity} + 'x ' + ${line.itemName}">1x Dish</span>
+            <span class="bold" th:text="${line.formattedLineTotal()}">₱195.00</span>
+        </div>
+        <div th:if="${line.quantity > 1}" class="sub" style="padding-left:10px;"
+             th:text="'@ ' + ${line.formattedUnitPrice()} + ' each'">@ ₱195.00</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+        <span>Subtotal (<span th:text="${order.totalItemCount()}">0</span>)</span>
+        <span th:text="${order.formattedSubtotal()}">₱0.00</span>
+    </div>
+    <div class="row" th:if="${order.discountPhp.signum() > 0}">
+        <span th:text="${order.discountLabel ?: 'Discount'}">Discount</span>
+        <span th:text="'-' + ${order.formattedDiscount()}">-₱0.00</span>
+    </div>
+    <div class="row" th:if="${order.deliveryFeePhp.signum() > 0}">
+        <span>Delivery Fee</span>
+        <span th:text="${order.formattedDeliveryFee()}">₱0.00</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row total-row">
+        <span>TOTAL</span>
+        <span th:text="${order.formattedTotal()}">₱0.00</span>
+    </div>
+    <div class="row" style="margin-top:3px;">
+        <span th:text="'Paid (' + ${order.paymentMethod.label} + ')'">Paid</span>
+        <span th:text="${order.formattedTendered()}">₱0.00</span>
+    </div>
+    <div class="row bold">
+        <span>CHANGE</span>
+        <span th:text="${order.formattedChange()}">₱0.00</span>
+    </div>
+
+    <div th:if="${order.notes != null and !order.notes.isBlank()}">
+        <div class="divider"></div>
+        <div class="sub"><strong>Note:</strong> <span th:text="${order.notes}"></span></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="center sub">
+        <div class="bold" th:text="${(footerNote != null and !footerNote.isBlank()) ? footerNote : 'Madamo gid nga salamat! Please come again.'}">Thank you!</div>
+        <div th:text="'Open Daily: ' + ${businessStatus.hoursRange()}">Open Daily</div>
+    </div>
+</div>
+
+<script th:if="${autoPrint}">
+    window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 180);
+    });
+</script>
+</body>
+</html>

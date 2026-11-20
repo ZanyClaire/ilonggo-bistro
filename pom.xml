@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.ilonggobistro</groupId>
 	<artifactId>ilonggo-bistro</artifactId>
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 	<name>IlonggoBistro</name>
 	<description>Ilonggo Bistro Web Platform in Barotac Nuevo, Iloilo</description>
 	<url/>

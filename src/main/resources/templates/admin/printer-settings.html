@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Receipt Printer Setup', ~{::section})}">
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <!-- Left: Printer Configuration Form -->
+    <div class="lg:col-span-7 bg-white rounded-3xl border border-sand p-6 sm:p-8 space-y-6">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="font-display text-2xl font-semibold text-espresso">Thermal Receipt Printer</h2>
+                <p class="text-xs text-slatewarm mt-1">
+                    Works with 58mm &amp; 80mm thermal printers (Epson TM-T82/T88, Xprinter XP-58/XP-80, Bixolon, Rongta, Bluetooth &amp; LAN POS printers).
+                </p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-linen text-forest text-xs font-semibold"
+                  th:text="${printerConfig.targetSummary()}">Browser Print</span>
+        </div>
+
+        <form th:action="@{/admin/pos/printer}" method="post" class="space-y-5">
+            <!-- Printer Mode -->
+            <div>
+                <label for="printer-mode" class="block text-xs font-semibold text-espresso mb-1.5">Printing Mode</label>
+                <select id="printer-mode" name="mode" onchange="updatePrinterFields()"
+                        class="w-full rounded-xl bg-alabaster border border-sand px-3.5 py-2.5 text-sm">
+                    <option th:each="m : ${printerModes}"
+                            th:value="${m.name()}"
+                            th:selected="${m == printerConfig.mode()}"
+                            th:text="${m.label}">Mode</option>
+                </select>
+            </div>
+
+            <!-- Windows / USB / Bluetooth Installed Printer Picker -->
+            <div id="usb-fields" class="rounded-2xl bg-alabaster border border-sand p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <label for="printerName" class="text-xs font-semibold text-espresso">Installed OS / USB / Bluetooth Printer</label>
+                    <span class="text-[11px] text-forest font-semibold"
+                          th:text="${#lists.size(systemPrinters)} + ' printer(s) detected'">0 detected</span>
+                </div>
+                <select id="printerName" name="printerName"
+                        class="w-full rounded-xl bg-white border border-sand px-3 py-2.5 text-sm">
+                    <option value="">-- Choose installed printer --</option>
+                    <option th:each="p : ${systemPrinters}"
+                            th:value="${p}"
+                            th:selected="${p.equalsIgnoreCase(printerConfig.printerName())}"
+                            th:text="${p}">POS-80</option>
+                </select>
+                <p class="text-[11px] text-slatewarm">
+                    Plug in your USB thermal printer (or pair Bluetooth receipt printer in Windows Settings) and refresh this page to see it listed.
+                </p>
+            </div>
+
+            <!-- Network LAN / Wi-Fi TCP 9100 Fields -->
+            <div id="lan-fields" class="rounded-2xl bg-alabaster border border-sand p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-2">
+                    <label for="networkHost" class="block text-xs font-semibold text-espresso mb-1">Printer IP Address (LAN / Wi-Fi)</label>
+                    <input id="networkHost" name="networkHost" type="text" th:value="${printerConfig.networkHost()}"
+                           placeholder="e.g., 192.168.1.200"
+                           class="w-full rounded-xl bg-white border border-sand px-3 py-2.5 text-sm font-mono">
+                </div>
+                <div>
+                    <label for="networkPort" class="block text-xs font-semibold text-espresso mb-1">TCP Port</label>
+                    <input id="networkPort" name="networkPort" type="number" min="1" max="65535"
+                           th:value="${printerConfig.networkPort()}"
+                           class="w-full rounded-xl bg-white border border-sand px-3 py-2.5 text-sm font-mono">
+                </div>
+                <p class="sm:col-span-3 text-[11px] text-slatewarm">
+                    Standard ESC/POS raw printing port is <code>9100</code>. Works from any tablet, phone, or cashier PC on the bistro's Wi-Fi.
+                </p>
+            </div>
+
+            <!-- Paper Roll Size & Footer -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="paperWidthMm" class="block text-xs font-semibold text-espresso mb-1.5">Thermal Paper Roll Width</label>
+                    <select id="paperWidthMm" name="paperWidthMm"
+                            class="w-full rounded-xl bg-alabaster border border-sand px-3.5 py-2.5 text-sm">
+                        <option value="80" th:selected="${printerConfig.paperWidthMm() == 80}">80mm Roll (48 characters/line — Standard POS)</option>
+                        <option value="58" th:selected="${printerConfig.paperWidthMm() == 58}">58mm Roll (32 characters/line — Compact / Mini)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="footerNote" class="block text-xs font-semibold text-espresso mb-1.5">Receipt Bottom Message</label>
+                    <input id="footerNote" name="footerNote" type="text" maxlength="160"
+                           th:value="${printerConfig.footerNote()}"
+                           placeholder="Madamo gid nga salamat! Please come again."
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3.5 py-2.5 text-sm">
+                </div>
+            </div>
+
+            <!-- Hardware Flags -->
+            <div class="space-y-2.5 pt-1 text-xs font-medium text-espresso">
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" name="autoCut" value="true" th:checked="${printerConfig.autoCut()}" class="accent-terracotta">
+                    <span>Auto-cut receipt paper after printing (ESC/POS partial cut)</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" name="openCashDrawer" value="true" th:checked="${printerConfig.openCashDrawer()}" class="accent-terracotta">
+                    <span>Kick open connected RJ11 cash drawer on each printed receipt</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" name="autoPrintAfterCheckout" value="true" th:checked="${printerConfig.autoPrintAfterCheckout()}" class="accent-terracotta">
+                    <span>Auto-print receipt immediately after completing a POS sale</span>
+                </label>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <button type="submit"
+                        class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-7 py-3 cursor-pointer">
+                    Save Printer Configuration
+                </button>
+                <a th:href="@{/admin/pos}" class="text-xs font-semibold text-forest hover:underline">← Back to POS Terminal</a>
+            </div>
+        </form>
+
+        <!-- Direct Hardware Test Actions -->
+        <div class="pt-5 border-t border-sand flex flex-wrap items-center gap-3">
+            <form th:action="@{/admin/pos/printer/test}" method="post">
+                <button type="submit"
+                        class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                    Send ESC/POS Test Slip to Printer
+                </button>
+            </form>
+            <form th:action="@{/admin/pos/printer/open-drawer}" method="post">
+                <button type="submit"
+                        class="rounded-full bg-linen hover:bg-sand text-espresso text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                    Kick Cash Drawer
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Exact Column-Width Thermal Preview -->
+    <div class="lg:col-span-5 bg-white rounded-3xl border border-sand p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="font-display text-lg font-semibold text-espresso">Thermal Roll Preview</h3>
+                <p class="text-xs text-slatewarm"
+                   th:text="${printerConfig.paperWidthMm()} + 'mm paper · ' + ${printerConfig.columns()} + ' characters per line'">80mm</p>
+            </div>
+            <span class="font-mono text-[10px] font-bold px-2.5 py-1 rounded-full bg-linen text-forest">ESC/POS</span>
+        </div>
+
+        <pre class="bg-alabaster border border-dashed border-espresso/30 rounded-2xl p-4 font-mono text-[11px] leading-relaxed text-espresso overflow-x-auto whitespace-pre"
+             th:text="${testSlipPreview}"></pre>
+
+        <div class="rounded-2xl bg-linen/70 border border-sand p-4 text-xs text-slatewarm space-y-1.5">
+            <p class="font-semibold text-espresso">Tip for Browser Thermal Printing</p>
+            <p>If your thermal printer uses a standard Windows driver (like Epson or Xprinter) and you use <strong>Browser Thermal Print</strong>, select your receipt printer in the print dialog and set Margins to <strong>None</strong>.</p>
+        </div>
+    </div>
+
+    <script>
+        function updatePrinterFields() {
+            const mode = document.getElementById('printer-mode').value;
+            document.getElementById('usb-fields').classList.toggle('hidden', mode !== 'WINDOWS_USB');
+            document.getElementById('lan-fields').classList.toggle('hidden', mode !== 'NETWORK_TCP');
+        }
+        document.addEventListener('DOMContentLoaded', updatePrinterFields);
+    </script>
+</section>
+</html>

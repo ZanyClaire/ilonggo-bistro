@@ -1,22 +1,65 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/admin-layout :: adminPage('Order Receipt', ~{::section})}">
-<section class="max-w-lg mx-auto space-y-6">
+<section class="max-w-xl mx-auto space-y-5">
     <!-- Action Bar (Hidden when Printing) -->
-    <div class="no-print flex flex-wrap items-center justify-between gap-3">
-        <a th:href="@{/admin/pos}" class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-5 py-2.5">
-            + New POS Order
-        </a>
-        <div class="flex items-center gap-2">
-            <button type="button" onclick="window.print()"
-                    class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
-                Print Receipt
-            </button>
-            <a th:href="@{/admin/sales}"
-               class="rounded-full bg-white border border-sand text-espresso text-xs font-semibold px-4 py-2.5">
-                Sales History
+    <div class="no-print bg-white rounded-3xl border border-sand p-4 space-y-3 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <a th:href="@{/admin/pos}" class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-5 py-2.5">
+                + New POS Order
             </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Direct Hardware Thermal Print (USB / LAN ESC/POS) -->
+                <button th:if="${printerConfig.directEscPosMode}"
+                        id="directPrintBtn"
+                        type="button"
+                        th:data-ref="${order.receiptNumber}"
+                        onclick="directPrintEscPos(this.dataset.ref)"
+                        class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5 cursor-pointer shadow-xs">
+                    Direct Print to Receipt Printer
+                </button>
+
+                <!-- Dedicated Browser Thermal Roll Prints (80mm & 58mm) -->
+                <a th:href="@{/admin/pos/receipt/{ref}/thermal(ref=${order.receiptNumber},width=80,autoprint=1)}"
+                   target="_blank"
+                   class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-4 py-2.5">
+                    Print 80mm
+                </a>
+                <a th:href="@{/admin/pos/receipt/{ref}/thermal(ref=${order.receiptNumber},width=58,autoprint=1)}"
+                   target="_blank"
+                   class="rounded-full bg-linen hover:bg-sand text-espresso text-xs font-semibold px-4 py-2.5">
+                    Print 58mm
+                </a>
+            </div>
         </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-sand text-xs">
+            <span class="text-slatewarm">
+                Configured Printer: <strong class="text-forest" th:text="${printerConfig.targetSummary()}">Browser Print (80mm)</strong>
+            </span>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="document.getElementById('escpos-preview-box').classList.toggle('hidden')"
+                        class="font-semibold text-forest hover:underline cursor-pointer">
+                    ESC/POS Preview
+                </button>
+                <a th:href="@{/admin/pos/printer}" class="font-semibold text-terracotta hover:underline">Printer Setup</a>
+                <a th:href="@{/admin/sales}" class="font-semibold text-slatewarm hover:text-espresso">Sales History</a>
+            </div>
+        </div>
+
+        <!-- Live Direct Print Status Feedback -->
+        <div id="direct-print-status" class="hidden rounded-2xl px-4 py-2.5 text-xs font-semibold"></div>
+    </div>
+
+    <!-- Collapsible Exact ESC/POS Plain-Text Preview -->
+    <div id="escpos-preview-box" class="no-print hidden bg-white rounded-3xl border border-sand p-5 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+            <strong class="text-espresso">Exact Thermal ESC/POS Layout (<span th:text="${printerConfig.paperWidthMm()}">80</span>mm · <span th:text="${printerConfig.columns()}">48</span> cols)</strong>
+            <button type="button" onclick="document.getElementById('escpos-preview-box').classList.add('hidden')"
+                    class="text-slatewarm hover:text-espresso font-semibold cursor-pointer">Hide</button>
+        </div>
+        <pre class="bg-alabaster border border-dashed border-espresso/30 rounded-2xl p-4 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre"
+             th:text="${escPosPreview}"></pre>
     </div>
 
     <!-- Printable Bistro Receipt Paper -->
@@ -122,10 +165,62 @@
 
         <!-- Receipt Footer -->
         <div class="text-center pt-2 space-y-1 text-[11px] text-slatewarm">
-            <p class="font-semibold text-espresso">Madamo gid nga salamat!</p>
+            <p class="font-semibold text-espresso"
+               th:text="${(printerConfig.footerNote() != null and !printerConfig.footerNote().isBlank()) ? printerConfig.footerNote() : 'Madamo gid nga salamat!'}">Madamo gid nga salamat!</p>
             <p>We hope you enjoyed dining at <span th:text="${storeProfile.bistroName()}">Ilonggo Bistro</span>.</p>
             <p th:text="'Open Daily · ' + ${businessStatus.hoursRange()}">Open Daily · 7 AM – 9 PM</p>
         </div>
     </div>
+
+    <script th:inline="javascript">
+        const AUTO_PRINT = /*[[${printerConfig.autoPrintAfterCheckout()}]]*/ false;
+        const DIRECT_MODE = /*[[${printerConfig.directEscPosMode}]]*/ false;
+        const PAPER_WIDTH = /*[[${printerConfig.paperWidthMm()}]]*/ 80;
+        const RECEIPT_REF = /*[[${order.receiptNumber}]]*/ '';
+
+        async function directPrintEscPos(ref) {
+            const box = document.getElementById('direct-print-status');
+            const btn = document.getElementById('directPrintBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending to Printer...'; }
+            box.className = 'rounded-2xl px-4 py-2.5 text-xs font-semibold bg-linen text-espresso';
+            box.textContent = 'Sending ESC/POS receipt to hardware printer...';
+
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const headers = {};
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+            try {
+                const res = await fetch('/admin/pos/receipt/' + encodeURIComponent(ref) + '/print-escpos', {
+                    method: 'POST',
+                    headers
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    box.className = 'rounded-2xl px-4 py-2.5 text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-900';
+                    box.textContent = '✓ ' + data.message;
+                } else {
+                    box.className = 'rounded-2xl px-4 py-2.5 text-xs font-semibold bg-red-50 border border-red-200 text-red-900';
+                    box.textContent = data.error || 'Could not print to receipt printer.';
+                }
+            } catch (_) {
+                box.className = 'rounded-2xl px-4 py-2.5 text-xs font-semibold bg-red-50 border border-red-200 text-red-900';
+                box.textContent = 'Network error sending print command.';
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Direct Print to Receipt Printer'; }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('justPaid') === '1' && AUTO_PRINT) {
+                if (DIRECT_MODE) {
+                    directPrintEscPos(RECEIPT_REF);
+                } else {
+                    window.open('/admin/pos/receipt/' + encodeURIComponent(RECEIPT_REF) + '/thermal?width=' + PAPER_WIDTH + '&autoprint=1', '_blank');
+                }
+            }
+        });
+    </script>
 </section>
 </html>

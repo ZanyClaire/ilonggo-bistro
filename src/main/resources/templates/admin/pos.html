@@ -38,6 +38,9 @@
                     class="rounded-full bg-linen hover:bg-sand text-espresso font-semibold px-4 py-1.5 cursor-pointer transition-colors">
                 Offline Receipts
             </button>
+            <a th:href="@{/admin/pos/printer}"
+               class="rounded-full bg-white hover:border-forest border border-sand text-forest font-semibold px-4 py-1.5 transition-colors"
+               th:text="'Printer: ' + ${printerConfig.paperWidthMm()} + 'mm'">Printer: 80mm</a>
             <button id="install-pwa-btn" type="button" onclick="installPosPwa()"
                     class="hidden rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-4 py-1.5 cursor-pointer">
                 Install POS App

@@ -32,15 +32,18 @@ public class AdminPosController {
     private final PosService posService;
     private final StoreSettingsService storeSettingsService;
     private final BusinessHoursService businessHoursService;
+    private final ReceiptPrinterService printerService;
 
     public AdminPosController(MenuService menuService,
                               PosService posService,
                               StoreSettingsService storeSettingsService,
-                              BusinessHoursService businessHoursService) {
+                              BusinessHoursService businessHoursService,
+                              ReceiptPrinterService printerService) {
         this.menuService = menuService;
         this.posService = posService;
         this.storeSettingsService = storeSettingsService;
         this.businessHoursService = businessHoursService;
+        this.printerService = printerService;
     }
 
     @GetMapping("/pos")
@@ -51,6 +54,7 @@ public class AdminPosController {
         model.addAttribute("paymentMethods", PaymentMethod.values());
         model.addAttribute("salesSummary", posService.getSalesSummary());
         model.addAttribute("cashierName", principal != null ? principal.getName() : "staff");
+        model.addAttribute("printerConfig", printerService.getConfig());
         return "admin/pos";
     }
 
@@ -120,9 +124,12 @@ public class AdminPosController {
         try {
             String cashier = principal != null ? principal.getName() : "staff";
             PosOrder saved = posService.checkout(request, cashier);
+            PrinterConfig printerConfig = printerService.getConfig();
+            String redirectUrl = "/admin/pos/receipt/" + saved.getReceiptNumber()
+                    + (printerConfig.autoPrintAfterCheckout() ? "?justPaid=1" : "");
             return ResponseEntity.ok(Map.of(
                     "receiptNumber", saved.getReceiptNumber(),
-                    "redirectUrl", "/admin/pos/receipt/" + saved.getReceiptNumber()
+                    "redirectUrl", redirectUrl
             ));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -132,6 +139,8 @@ public class AdminPosController {
     @GetMapping("/pos/receipt/{receiptNumber}")
     public String viewReceipt(@PathVariable String receiptNumber, Model model) {
         model.addAttribute("order", posService.getByReceiptNumber(receiptNumber));
+        model.addAttribute("printerConfig", printerService.getConfig());
+        model.addAttribute("escPosPreview", printerService.previewReceiptText(receiptNumber));
         return "admin/pos-receipt";
     }
 
