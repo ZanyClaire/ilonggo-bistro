@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Menu Categories', ~{::section})}">
+<section class="space-y-8">
+    <!-- Add New Category Card -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h2 class="font-display text-xl font-semibold text-espresso">Add New Category</h2>
+                <p class="text-xs text-slatewarm mt-0.5">New categories appear immediately on your public Menu, Home page, and POS Terminal.</p>
+            </div>
+            <a th:href="@{/admin/menu}" class="text-xs font-semibold text-terracotta hover:underline">Go to Menu Items →</a>
+        </div>
+
+        <form th:action="@{/admin/categories}" th:object="${categoryForm}" method="post"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Category Name</label>
+                <input type="text" th:field="*{name}" required placeholder="e.g., Seafood Specials"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Daypart / Serving Time</label>
+                <input type="text" th:field="*{daypart}" required placeholder="All Day / Lunch & Dinner"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Display Order</label>
+                <input type="number" min="1" max="99" th:field="*{displayOrder}"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="md:col-span-2 lg:col-span-3">
+                <label class="block text-xs font-semibold text-espresso mb-1">Short Description</label>
+                <input type="text" th:field="*{description}" placeholder="Fresh Iloilo coastal dishes served hot..."
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="flex items-end">
+                <button type="submit"
+                        class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-6 py-3 cursor-pointer">
+                    + Create Category
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Categories -->
+    <div class="bg-white rounded-3xl border border-sand overflow-hidden">
+        <div class="px-6 py-4 border-b border-sand flex items-center justify-between">
+            <h2 class="font-display text-xl font-semibold text-espresso">Existing Categories</h2>
+            <span class="text-xs font-semibold text-forest tabular-nums" th:text="${#lists.size(categories)} + ' categories'">0 categories</span>
+        </div>
+
+        <div class="divide-y divide-sand">
+            <div th:each="cat : ${categories}" class="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+                <form th:action="@{/admin/categories/{id}(id=${cat.id})}" method="post"
+                      class="flex-1 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                    <div class="sm:col-span-3">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Name</label>
+                        <input type="text" name="name" th:value="${cat.name}" required
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Daypart</label>
+                        <input type="text" name="daypart" th:value="${cat.daypart}" required
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-4">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Description</label>
+                        <input type="text" name="description" th:value="${cat.description}"
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-1">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Order</label>
+                        <input type="number" name="displayOrder" th:value="${cat.displayOrder}" min="1"
+                               class="w-full rounded-xl bg-alabaster border border-sand px-2 py-2 text-xs tabular-nums">
+                    </div>
+                    <div class="sm:col-span-2 flex items-end justify-end gap-2 pt-4 sm:pt-4">
+                        <button type="submit"
+                                class="rounded-xl bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-3.5 py-2 cursor-pointer">
+                            Save
+                        </button>
+                    </div>
+                </form>
+
+                <div class="flex items-center justify-between lg:justify-end gap-4 lg:pl-4 lg:border-l lg:border-sand">
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-linen text-espresso tabular-nums"
+                          th:text="${itemCounts.getOrDefault(cat.id, 0L)} + ' dish(es)'">0 dish(es)</span>
+                    <form th:action="@{/admin/categories/{id}/delete(id=${cat.id})}" method="post"
+                          onsubmit="return confirm('Delete this category?');">
+                        <button type="submit"
+                                class="text-xs font-semibold text-red-700 hover:underline cursor-pointer">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Manage Event Album', ~{::section})}">
+<section class="space-y-8">
+    <!-- Top Header Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <a th:href="@{/admin/events}" class="text-xs font-semibold text-slatewarm hover:text-terracotta">← Back to All Events</a>
+            <h2 class="font-display text-2xl sm:text-3xl font-semibold text-espresso mt-1" th:text="${event.title}">Event Title</h2>
+            <p class="text-xs text-slatewarm mt-0.5">
+                <span class="font-semibold text-terracotta" th:text="${event.eventType}">Type</span> ·
+                <span th:text="${event.formattedDate()}">Date</span> ·
+                <span th:text="${event.location}">Location</span>
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a th:if="${event.published}" th:href="@{/events/{slug}(slug=${event.slug})}" target="_blank"
+               class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-4 py-2">
+                View Public Album ↗
+            </a>
+            <form th:action="@{/admin/events/{id}/delete(id=${event.id})}" method="post"
+                  onsubmit="return confirm('Delete this entire event and all its photos?');">
+                <button type="submit"
+                        class="rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-800 text-xs font-semibold px-4 py-2 cursor-pointer">
+                    Delete Event
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Drag-and-Drop Multi-Photo Batch Uploader -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-5">
+        <div>
+            <h3 class="font-display text-xl font-semibold text-espresso">Upload Multiple Event Photos</h3>
+            <p class="text-xs text-slatewarm mt-0.5">Select or drag-and-drop up to <strong th:text="${maxBatch}">20</strong> images at once (JPG, PNG, WEBP). Admin photos go live immediately.</p>
+        </div>
+
+        <form th:action="@{/admin/events/{id}/photos(id=${event.id})}" method="post" enctype="multipart/form-data" class="space-y-4">
+            <div id="admin-dropzone"
+                 onclick="document.getElementById('admin-files-input').click()"
+                 class="border-2 border-dashed border-sand hover:border-terracotta rounded-3xl bg-alabaster p-8 text-center cursor-pointer transition-colors space-y-2">
+                <input id="admin-files-input" name="files" type="file" multiple required
+                       accept="image/jpeg,image/png,image/webp"
+                       onchange="renderAdminPreview(this.files)"
+                       class="hidden">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-linen text-terracotta flex items-center justify-center font-display text-2xl font-bold">+</div>
+                <p class="font-semibold text-sm text-espresso">Click to pick multiple photos or drag &amp; drop them here</p>
+                <p id="admin-files-summary" class="text-xs text-slatewarm">Batch upload JPG, PNG, or WEBP (up to 8 MB each)</p>
+            </div>
+
+            <div id="admin-preview-grid" class="hidden grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 gap-2.5"></div>
+
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <input type="text" name="caption" maxlength="255" placeholder="Optional caption applied to this batch..."
+                       class="flex-1 rounded-xl bg-alabaster border border-sand px-4 py-2.5 text-sm">
+                <button type="submit"
+                        class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-6 py-3 cursor-pointer">
+                    Upload Batch to Album
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Pending Guest Photos Moderation Queue -->
+    <div th:if="${!#lists.isEmpty(pendingPhotos)}"
+         class="bg-amber-50/70 rounded-3xl border border-amber-200 p-6 space-y-4">
+        <div>
+            <h3 class="font-display text-xl font-semibold text-amber-950">
+                Pending Guest Uploads (<span th:text="${#lists.size(pendingPhotos)}">0</span>)
+            </h3>
+            <p class="text-xs text-amber-900/80">Review photos shared by attendees before publishing them to the live album.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div th:each="photo : ${pendingPhotos}" class="bg-white rounded-2xl border border-amber-200 overflow-hidden flex flex-col">
+                <img th:src="${photo.imageUrl}" th:alt="${photo.caption}" class="w-full aspect-[4/3] object-cover">
+                <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+                    <div class="space-y-1 text-xs">
+                        <p class="font-semibold text-espresso" th:text="'By ' + ${photo.uploadedBy}">Guest</p>
+                        <p class="text-slatewarm" th:text="${photo.caption ?: 'No caption'}"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <form th:action="@{/admin/events/{eid}/photos/{pid}/approve(eid=${event.id},pid=${photo.id})}" method="post" class="flex-1">
+                            <button type="submit" class="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold py-2 cursor-pointer">
+                                Approve
+                            </button>
+                        </form>
+                        <form th:action="@{/admin/events/{eid}/photos/{pid}/delete(eid=${event.id},pid=${photo.id})}" method="post">
+                            <button type="submit" class="rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold px-3 py-2 cursor-pointer">
+                                Reject
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Published Event Photos Grid -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-display text-xl font-semibold text-espresso">Published Album Photos</h3>
+            <span class="text-xs font-semibold text-forest tabular-nums" th:text="${#lists.size(approvedPhotos)} + ' photo(s)'">0 photos</span>
+        </div>
+
+        <div th:if="${#lists.isEmpty(approvedPhotos)}" class="py-8 text-center text-sm text-slatewarm">
+            No photos uploaded yet. Use the batch dropzone above to add event photos.
+        </div>
+
+        <div th:if="${!#lists.isEmpty(approvedPhotos)}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div th:each="photo : ${approvedPhotos}" class="rounded-2xl border border-sand overflow-hidden bg-alabaster flex flex-col">
+                <div class="relative aspect-[4/3] bg-linen">
+                    <img th:src="${photo.imageUrl}" th:alt="${photo.caption}" class="w-full h-full object-cover">
+                    <span th:if="${event.coverImageUrl == photo.imageUrl}"
+                          class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-terracotta text-white px-2.5 py-0.5 rounded-full">
+                        Cover Photo
+                    </span>
+                    <span th:if="${photo.uploaderRole == 'GUEST'}"
+                          class="absolute top-2 right-2 text-[10px] font-bold uppercase bg-white/90 text-forest px-2 py-0.5 rounded-full">
+                        Guest
+                    </span>
+                </div>
+                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2 text-xs">
+                    <div>
+                        <p class="text-espresso font-medium" th:text="${photo.caption != null and !photo.caption.isBlank() ? photo.caption : 'Event photo'}"></p>
+                        <p class="text-[11px] text-slatewarm mt-0.5" th:text="'By ' + ${photo.uploadedBy}">By Admin</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-sand">
+                        <form th:if="${event.coverImageUrl != photo.imageUrl}"
+                              th:action="@{/admin/events/{eid}/photos/{pid}/cover(eid=${event.id},pid=${photo.id})}" method="post">
+                            <button type="submit" class="font-semibold text-forest hover:underline cursor-pointer">Set as Cover</button>
+                        </form>
+                        <span th:if="${event.coverImageUrl == photo.imageUrl}" class="text-[11px] font-semibold text-terracotta">Active Cover</span>
+                        <form th:action="@{/admin/events/{eid}/photos/{pid}/delete(eid=${event.id},pid=${photo.id})}" method="post"
+                              onsubmit="return confirm('Remove this photo?');">
+                            <button type="submit" class="font-semibold text-red-700 hover:underline cursor-pointer">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Event Metadata -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-4">
+        <h3 class="font-display text-xl font-semibold text-espresso">Event Details &amp; Settings</h3>
+        <form th:action="@{/admin/events/{id}(id=${event.id})}" th:object="${eventForm}" method="post"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-semibold mb-1">Event Title</label>
+                <input type="text" th:field="*{title}" required class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1">Event Type</label>
+                <select th:field="*{eventType}" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                    <option th:each="type : ${eventTypes}" th:value="${type}" th:text="${type}">Awards Night</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1">Event Date</label>
+                <input type="date" th:field="*{eventDate}" required class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-semibold mb-1">Location</label>
+                <input type="text" th:field="*{location}" required class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-semibold mb-1">Description</label>
+                <textarea th:field="*{description}" rows="3" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm"></textarea>
+            </div>
+            <div class="lg:col-span-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap gap-6 text-xs font-medium">
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" th:field="*{allowGuestUploads}" class="accent-terracotta"> Allow guest multi-photo uploads
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" th:field="*{published}" class="accent-terracotta"> Published publicly
+                    </label>
+                </div>
+                <button type="submit" class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-6 py-2.5 cursor-pointer">
+                    Save Event Details
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function renderAdminPreview(fileList) {
+            const grid = document.getElementById('admin-preview-grid');
+            const summary = document.getElementById('admin-files-summary');
+            const files = Array.from(fileList || []);
+            grid.innerHTML = '';
+            if (!files.length) {
+                grid.classList.add('hidden');
+                summary.textContent = 'Batch upload JPG, PNG, or WEBP (up to 8 MB each)';
+                return;
+            }
+            summary.textContent = files.length + ' photo(s) selected — click Upload Batch to Album';
+            grid.classList.remove('hidden');
+            files.slice(0, 20).forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'aspect-square rounded-xl overflow-hidden border border-sand bg-linen';
+                div.innerHTML = `<img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover">`;
+                grid.appendChild(div);
+            });
+        }
+        const adz = document.getElementById('admin-dropzone');
+        if (adz) {
+            ['dragenter', 'dragover'].forEach(evt => adz.addEventListener(evt, e => {
+                e.preventDefault(); adz.classList.add('border-terracotta', 'bg-linen');
+            }));
+            ['dragleave', 'drop'].forEach(evt => adz.addEventListener(evt, e => {
+                e.preventDefault(); adz.classList.remove('border-terracotta', 'bg-linen');
+            }));
+            adz.addEventListener('drop', e => {
+                const input = document.getElementById('admin-files-input');
+                input.files = e.dataTransfer.files;
+                renderAdminPreview(input.files);
+            });
+        }
+    </script>
+</section>
+</html>

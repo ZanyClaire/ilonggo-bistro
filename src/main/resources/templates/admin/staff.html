@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Staff & Role Management', ~{::section})}">
+<section class="space-y-8">
+    <!-- Notification Provider Status Strip -->
+    <div class="rounded-3xl bg-forest text-alabaster p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span class="uppercase tracking-widest text-calamansi font-bold">OTP &amp; Verification Channels</span>
+                <span class="px-2.5 py-0.5 rounded-full bg-white/15 text-white"
+                      th:text="${mailConfigured ? 'Gmail SMTP Live' : 'Gmail Simulator'}">Gmail Simulator</span>
+                <span class="px-2.5 py-0.5 rounded-full bg-white/15 text-white"
+                      th:text="${whatsappConfigured ? 'WhatsApp Cloud Live' : 'WhatsApp Simulator'}">WhatsApp Simulator</span>
+            </div>
+            <p class="text-xs text-alabaster/80">
+                Register staff with their required <strong>@gmail.com</strong> and <strong>WhatsApp</strong> numbers to enable Google Sign-In and 6-digit OTP security.
+                Set <code class="bg-white/10 px-1 rounded">MAIL_PROVIDER=SMTP</code> or <code class="bg-white/10 px-1 rounded">WHATSAPP_PROVIDER=META_CLOUD</code> when live API keys are ready.
+            </p>
+        </div>
+    </div>
+
+    <!-- Role Permissions Legend -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div th:each="r : ${roles}" class="bg-white rounded-2xl border border-sand p-4 space-y-1">
+            <div class="flex items-center justify-between gap-2">
+                <span class="font-display text-base font-semibold text-espresso" th:text="${r.label}">Role</span>
+                <span class="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-linen text-forest" th:text="${r.name()}">ADMIN</span>
+            </div>
+            <p class="text-xs text-slatewarm leading-relaxed" th:text="${r.permissionsSummary}">Permissions</p>
+        </div>
+    </div>
+
+    <!-- Register New Employee Form -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-5">
+        <div>
+            <h2 class="font-display text-xl font-semibold text-espresso">Register New Staff Member</h2>
+            <p class="text-xs text-slatewarm mt-0.5">Every employee needs a unique Gmail address and Philippine mobile / WhatsApp number.</p>
+        </div>
+
+        <form th:action="@{/admin/staff}" th:object="${staffForm}" method="post"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Full Name</label>
+                <input type="text" th:field="*{fullName}" required placeholder="e.g., Maria Clara Reyes"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Username</label>
+                <input type="text" th:field="*{username}" required placeholder="e.g., cashier.maria"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Assigned Role</label>
+                <select th:field="*{role}" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                    <option th:each="r : ${roles}" th:value="${r.name()}" th:text="${r.label} + ' (' + ${r.name()} + ')'">Cashier</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Gmail Address (Required)</label>
+                <input type="email" th:field="*{email}" required placeholder="employee@gmail.com"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">WhatsApp / Mobile Number (Required)</label>
+                <input type="tel" th:field="*{phoneNumber}" required placeholder="+63 917 123 4567"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('phoneNumber')}" th:errors="*{phoneNumber}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Initial Password (8+ chars)</label>
+                <input type="password" th:field="*{initialPassword}" minlength="8" required placeholder="Temporary password"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('initialPassword')}" th:errors="*{initialPassword}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div class="md:col-span-2 lg:col-span-3 flex flex-wrap items-center justify-between gap-4 pt-2">
+                <label class="inline-flex items-center gap-2 text-xs font-medium text-espresso cursor-pointer">
+                    <input type="checkbox" th:field="*{mustChangePassword}" class="accent-terracotta">
+                    Require password change on first login
+                </label>
+                <button type="submit"
+                        class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-6 py-3 cursor-pointer">
+                    + Register Staff Account
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Staff Directory -->
+    <div class="bg-white rounded-3xl border border-sand overflow-hidden">
+        <div class="px-6 py-4 border-b border-sand flex items-center justify-between">
+            <h2 class="font-display text-xl font-semibold text-espresso">Registered Staff Accounts</h2>
+            <span class="text-xs font-semibold text-forest tabular-nums" th:text="${#lists.size(staffList)} + ' staff member(s)'">0</span>
+        </div>
+
+        <div class="divide-y divide-sand">
+            <div th:each="staff : ${staffList}" class="p-6 space-y-4"
+                 th:classappend="${!staff.enabled} ? 'bg-alabaster/70 opacity-75' : ''">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <span class="font-display text-lg font-semibold text-espresso" th:text="${staff.fullName}">Name</span>
+                        <span class="font-mono text-xs text-slatewarm" th:text="'@' + ${staff.username}">@username</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-forest text-white"
+                              th:text="${staff.roleLabel()}">Role</span>
+                        <span th:if="${staff.enabled}" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-900">Active</span>
+                        <span th:if="${!staff.enabled}" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-900">Disabled</span>
+                        <span th:if="${staff.emailVerified}" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-linen text-forest">Gmail Verified</span>
+                        <span th:if="${staff.phoneVerified}" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-linen text-emerald-800">WhatsApp Verified</span>
+                        <span th:if="${staff.mustChangePassword}" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900">Must Change Password</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a th:href="${staff.whatsappChatUrl()}" target="_blank" rel="noopener"
+                           class="rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-semibold px-3.5 py-1.5">
+                            WhatsApp Chat ↗
+                        </a>
+                        <form th:action="@{/admin/staff/{id}/reset-password(id=${staff.id})}" method="post" class="inline">
+                            <input type="hidden" name="channel" value="GMAIL">
+                            <button type="submit"
+                                    class="rounded-full bg-linen hover:bg-sand text-espresso text-xs font-semibold px-3.5 py-1.5 cursor-pointer">
+                                Send Gmail Reset OTP
+                            </button>
+                        </form>
+                        <form th:action="@{/admin/staff/{id}/reset-password(id=${staff.id})}" method="post" class="inline">
+                            <input type="hidden" name="channel" value="WHATSAPP">
+                            <button type="submit"
+                                    class="rounded-full bg-linen hover:bg-sand text-emerald-900 text-xs font-semibold px-3.5 py-1.5 cursor-pointer">
+                                Send WA Reset OTP
+                            </button>
+                        </form>
+                        <form th:action="@{/admin/staff/{id}/toggle-enabled(id=${staff.id})}" method="post" class="inline">
+                            <button type="submit"
+                                    th:classappend="${staff.enabled} ? 'text-red-700 border-red-200 bg-red-50 hover:bg-red-100' : 'text-emerald-800 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'"
+                                    class="rounded-full border text-xs font-semibold px-3.5 py-1.5 cursor-pointer"
+                                    th:text="${staff.enabled ? 'Disable' : 'Enable'}">Disable</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inline Edit Form -->
+                <form th:action="@{/admin/staff/{id}/update(id=${staff.id})}" method="post"
+                      class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                    <div class="sm:col-span-3">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Full Name</label>
+                        <input type="text" name="fullName" th:value="${staff.fullName}" required
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Gmail Address</label>
+                        <input type="email" name="email" th:value="${staff.email}" required
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">WhatsApp Number</label>
+                        <input type="tel" name="phoneNumber" th:value="${staff.phoneNumber}" required
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] uppercase tracking-wider text-slatewarm font-semibold mb-1">Role</label>
+                        <select name="role" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                            <option th:each="r : ${roles}" th:value="${r.name()}" th:selected="${r.name() == staff.role}" th:text="${r.label}">Role</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <button type="submit"
+                                class="w-full rounded-xl bg-forest hover:bg-forest-soft text-white text-xs font-semibold py-2 px-3 cursor-pointer">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

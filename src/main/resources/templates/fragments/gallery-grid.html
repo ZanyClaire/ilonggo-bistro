@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="grid" id="gallery-grid-container">
+    <div th:if="${#lists.isEmpty(photos)}"
+         class="rounded-3xl bg-white border border-sand p-12 text-center text-slatewarm">
+        No photos in this category yet.
+    </div>
+
+    <div th:if="${!#lists.isEmpty(photos)}"
+         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <figure th:each="photo : ${photos}"
+                th:data-src="${photo.imageUrl}"
+                th:data-title="${photo.title}"
+                th:data-caption="${photo.caption}"
+                onclick="openLightbox(this.dataset.src, this.dataset.title, this.dataset.caption)"
+                class="group cursor-pointer bg-white rounded-3xl border border-sand overflow-hidden shadow-xs hover:shadow-md transition-all">
+            <div class="aspect-[4/3] overflow-hidden bg-linen relative">
+                <img th:src="${photo.imageUrl}" th:alt="${photo.title}" loading="lazy"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                <span class="absolute top-3 left-3 text-[11px] font-semibold uppercase tracking-wider bg-white/90 text-forest px-3 py-1 rounded-full"
+                      th:text="${photo.category}">Food & Drink</span>
+            </div>
+            <figcaption class="p-5 space-y-1">
+                <h3 class="font-display text-lg font-semibold text-espresso" th:text="${photo.title}">Photo Title</h3>
+                <p class="text-sm text-slatewarm leading-relaxed" th:text="${photo.caption}">Caption</p>
+            </figcaption>
+        </figure>
+    </div>
+</div>
+</body>
+</html>

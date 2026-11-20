@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="page(pageTitle, pageDescription, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle} + ' — ' + ${storeProfile.bistroName()}">Ilonggo Bistro</title>
+    <meta name="description" th:content="${pageDescription}">
+    <meta property="og:title" th:content="${pageTitle} + ' — ' + ${storeProfile.bistroName()}">
+    <meta property="og:description" th:content="${pageDescription}">
+    <meta property="og:type" content="restaurant">
+    <meta property="og:image" content="/images/hero-bistro.jpg">
+    <link rel="icon" type="image/jpeg" th:href="@{/images/logo.jpg}">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/htmx.min.js}" defer></script>
+
+    <!-- Local SEO Restaurant Schema -->
+    <script type="application/ld+json" th:inline="none">
+    {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      "name": "Ilonggo Bistro",
+      "servesCuisine": ["Filipino", "Ilonggo", "Bistro", "Coffee"],
+      "priceRange": "₱₱",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Burgos-Osmeña St",
+        "addressLocality": "Barotac Nuevo",
+        "addressRegion": "Iloilo",
+        "postalCode": "5007",
+        "addressCountry": "PH"
+      },
+      "openingHoursSpecification": [{
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+        "opens": "07:00",
+        "closes": "21:00"
+      }],
+      "acceptsReservations": "True"
+    }
+    </script>
+</head>
+<body class="bg-alabaster text-espresso antialiased min-h-screen flex flex-col pb-20 md:pb-0">
+
+<!-- Slim Top Utility Bar (Hours + Live Status) -->
+<div class="bg-forest text-alabaster/90 text-xs border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-4">
+        <p class="truncate text-alabaster/80"
+           th:text="${(storeProfile.announcementBanner() != null and !storeProfile.announcementBanner().isBlank()) ? storeProfile.announcementBanner() : storeProfile.addressLine()}">
+            Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo · Daily 7 AM – 9 PM
+        </p>
+        <span class="inline-flex items-center gap-2 font-semibold whitespace-nowrap shrink-0 text-white">
+            <span class="w-2 h-2 rounded-full"
+                  th:classappend="${businessStatus.tone() == 'open'} ? 'bg-emerald-400 animate-pulse'
+                    : (${businessStatus.tone() == 'closing-soon'} ? 'bg-amber-400 animate-pulse'
+                    : 'bg-alabaster/50')"></span>
+            <span th:text="${businessStatus.headline()}">Open now · Until 9 PM</span>
+        </span>
+    </div>
+</div>
+
+<!-- Clean Single-Row Sticky Navigation -->
+<header class="sticky top-0 z-40 bg-alabaster/95 backdrop-blur-md border-b border-sand/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between gap-6 h-20">
+            <!-- Brand Wordmark -->
+            <a th:href="@{/}" class="flex items-center gap-3 group shrink-0">
+                <img th:src="@{/images/logo.jpg}" th:alt="${storeProfile.bistroName()} + ' Logo'"
+                     class="w-11 h-11 rounded-full object-cover ring-2 ring-forest/15 shadow-xs group-hover:scale-105 transition-transform">
+                <div class="whitespace-nowrap">
+                    <div class="font-display font-semibold text-xl leading-tight text-espresso"
+                         th:text="${storeProfile.bistroName()}">Ilonggo Bistro</div>
+                    <div class="text-[10px] uppercase tracking-[0.18em] text-slatewarm font-semibold">
+                        Barotac Nuevo · Iloilo
+                    </div>
+                </div>
+            </a>
+
+            <!-- Clean Centered Desktop Links -->
+            <nav class="hidden lg:flex items-center gap-7 text-sm font-medium whitespace-nowrap">
+                <a th:href="@{/}"
+                   th:classappend="${currentPath == '/'} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">Home</a>
+                <a th:href="@{/menu}"
+                   th:classappend="${currentPath.startsWith('/menu')} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">Menu</a>
+                <a th:href="@{/events}"
+                   th:classappend="${currentPath.startsWith('/events')} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">Events</a>
+                <a th:href="@{/gallery}"
+                   th:classappend="${currentPath.startsWith('/gallery')} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">Gallery</a>
+                <a th:href="@{/about}"
+                   th:classappend="${currentPath == '/about'} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">About</a>
+                <a th:href="@{/contact}"
+                   th:classappend="${currentPath.startsWith('/contact')} ? 'text-terracotta font-semibold' : 'text-espresso/75 hover:text-espresso'"
+                   class="transition-colors py-1">Contact</a>
+            </nav>
+
+            <!-- Compact Never-Wrapping Action CTAs -->
+            <div class="hidden lg:flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+                <a th:href="@{/order}"
+                   th:classappend="${currentPath.startsWith('/order')} ? 'bg-forest text-white border-forest' : 'bg-white text-forest border-forest/25 hover:border-forest hover:bg-forest hover:text-white'"
+                   class="inline-flex items-center justify-center rounded-full border text-sm font-semibold px-4 py-2 transition-colors">
+                    Order
+                </a>
+                <a th:href="@{/reservations}"
+                   class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold px-5 py-2 shadow-xs transition-colors">
+                    Reserve
+                </a>
+            </div>
+
+            <!-- Mobile / Tablet Menu Button -->
+            <button type="button"
+                    onclick="document.getElementById('mobile-nav').classList.toggle('hidden')"
+                    class="lg:hidden inline-flex items-center justify-center p-2.5 rounded-xl border border-sand bg-white text-espresso cursor-pointer"
+                    aria-label="Toggle Menu">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile / Tablet Dropdown Menu -->
+    <div id="mobile-nav" class="hidden lg:hidden border-t border-sand bg-alabaster px-5 py-4 space-y-1">
+        <a th:href="@{/}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">Home</a>
+        <a th:href="@{/menu}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">Digital Menu</a>
+        <a th:href="@{/order}" class="block py-2 text-sm font-semibold text-forest hover:text-terracotta">Order Delivery / Pickup</a>
+        <a th:href="@{/reservations}" class="block py-2 text-sm font-semibold text-terracotta">Reserve a Table</a>
+        <a th:href="@{/events}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">Events &amp; Photo Albums</a>
+        <a th:href="@{/gallery}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">Gallery &amp; Vibe</a>
+        <a th:href="@{/about}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">About &amp; Directions</a>
+        <a th:href="@{/contact}" class="block py-2 text-sm font-medium text-espresso hover:text-terracotta">Contact &amp; Catering</a>
+        <a th:href="@{/admin}" class="block pt-3 mt-2 border-t border-sand text-xs font-medium text-slatewarm">Staff Portal →</a>
+    </div>
+</header>
+
+<!-- Main Page Content -->
+<main class="flex-1" th:replace="${content}"></main>
+
+<!-- Footer -->
+<footer class="bg-forest text-alabaster/90 mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div class="md:col-span-2 space-y-4">
+            <div class="flex items-center gap-3">
+                <img th:src="@{/images/logo.jpg}" th:alt="${storeProfile.bistroName()} + ' Logo'"
+                     class="w-12 h-12 rounded-full object-cover ring-2 ring-white/25 shadow-sm">
+                <div>
+                    <div class="font-display text-2xl font-semibold text-white" th:text="${storeProfile.bistroName()}">Ilonggo Bistro</div>
+                    <div class="text-xs uppercase tracking-[0.16em] text-calamansi">Barotac Nuevo · Iloilo · Est. 2025</div>
+                </div>
+            </div>
+            <p class="text-sm text-alabaster/75 max-w-md leading-relaxed" th:text="${storeProfile.tagline()}">
+                Warm Ilonggo Comfort, From First Coffee to Last Call
+            </p>
+            <div class="flex flex-wrap gap-3 pt-1">
+                <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-colors">
+                    Google Maps Directions
+                </a>
+                <a th:href="${storeProfile.messengerUrl()}" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-colors">
+                    Message on Messenger
+                </a>
+            </div>
+        </div>
+
+        <div class="space-y-3 text-sm">
+            <h3 class="font-display text-base font-semibold text-white">Visit Us</h3>
+            <p class="text-alabaster/80 leading-relaxed" th:text="${storeProfile.addressLine()}">Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo</p>
+            <p class="text-xs text-calamansi font-medium">Plus Code: <span th:text="${storeProfile.plusCode()}">VPW2+QF Barotac Nuevo, Iloilo</span></p>
+            <p class="text-alabaster/80">Daily: <span class="tabular-nums font-medium" th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</span></p>
+            <p class="text-alabaster/80" th:if="${!storeProfile.phoneNumber().isBlank()}">
+                <a th:href="${storeProfile.formattedTelHref()}" class="hover:text-calamansi transition-colors"
+                   th:text="${storeProfile.phoneNumber()}">+63 917 000 0000</a>
+            </p>
+        </div>
+
+        <div class="space-y-3 text-sm">
+            <h3 class="font-display text-base font-semibold text-white">Explore</h3>
+            <ul class="space-y-2 text-alabaster/75">
+                <li><a th:href="@{/menu}" class="hover:text-white transition-colors">Interactive Digital Menu</a></li>
+                <li><a th:href="@{/order}" class="hover:text-white transition-colors">Order On-Demand Delivery</a></li>
+                <li><a th:href="@{/reservations}" class="hover:text-white transition-colors">Book a Dine-In Table</a></li>
+                <li><a th:href="@{/gallery}" class="hover:text-white transition-colors">Food & Vibe Gallery</a></li>
+                <li><a th:href="@{/events}" class="hover:text-white transition-colors">Event Photo Albums</a></li>
+                <li><a th:href="@{/about}" class="hover:text-white transition-colors">Our Story & Directions</a></li>
+                <li><a th:href="@{/contact}" class="hover:text-white transition-colors">Events & Inquiries</a></li>
+                <li class="pt-2 border-t border-white/10"><a th:href="@{/admin}" class="text-xs text-alabaster/60 hover:text-calamansi">Staff Admin Portal →</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-white/10 py-5 px-4 text-center text-xs text-alabaster/60">
+        © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span>
+        <span th:text="${storeProfile.bistroName()}">Ilonggo Bistro</span> · Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo · Dine-in Hospitality
+    </div>
+</footer>
+
+<!-- Mobile Sticky Bottom Quick-Action Bar -->
+<div class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-sand px-3 py-2 shadow-lg">
+    <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+        <a th:href="@{/menu}" class="py-2 rounded-xl bg-linen text-espresso hover:bg-sand transition-colors">Menu</a>
+        <a th:href="@{/reservations}" class="py-2 rounded-xl bg-terracotta text-white shadow-sm">Reserve</a>
+        <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+           class="py-2 rounded-xl bg-forest text-white">Directions</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("htmx:configRequest", function (event) {
+        const tokenMeta = document.querySelector('meta[name="_csrf"]');
+        const headerMeta = document.querySelector('meta[name="_csrf_header"]');
+        if (tokenMeta && headerMeta) {
+            event.detail.headers[headerMeta.content] = tokenMeta.content;
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Home', 'Authentic Ilonggo comfort food, artisan coffee, and warm dine-in hospitality at Burgos-Osmeña St, Barotac Nuevo, Iloilo. Open daily 7 AM to 9 PM.', ~{::section})}">
+<section>
+    <!-- Editorial Hero Section -->
+    <div class="relative overflow-hidden bg-espresso text-white">
+        <div class="absolute inset-0">
+            <img src="/images/hero-bistro.jpg" alt="Sunlit interior of Ilonggo Bistro in Barotac Nuevo, Iloilo"
+                 class="w-full h-full object-cover opacity-75">
+            <div class="absolute inset-0 bg-gradient-to-r from-espresso/90 via-espresso/55 to-espresso/15"></div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-36">
+            <div class="max-w-xl space-y-6">
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-calamansi">
+                    Est. 2025 · Burgos-Osmeña St, Barotac Nuevo
+                </p>
+
+                <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.06] text-white">
+                    Authentic Ilonggo flavor, served warm all day.
+                </h1>
+
+                <p class="text-base sm:text-lg text-alabaster/85 leading-relaxed">
+                    From 7 AM native coffee and hearty silog breakfasts to slow-simmered La Paz Batchoy,
+                    clay-pot KBL, and chargrilled Chicken Inasal — dine in or order fresh to your door.
+                </p>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <a th:href="@{/menu}"
+                       class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-7 py-3.5 text-sm shadow-lg transition-all whitespace-nowrap">
+                        Explore Menu
+                    </a>
+                    <a th:href="@{/order}"
+                       class="inline-flex items-center justify-center rounded-full bg-white hover:bg-alabaster text-espresso font-semibold px-7 py-3.5 text-sm shadow-lg transition-all whitespace-nowrap">
+                        Order Delivery
+                    </a>
+                    <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1.5 text-sm font-semibold text-alabaster/90 hover:text-calamansi px-3 py-2 transition-colors whitespace-nowrap">
+                        Directions (VPW2+QF) ↗
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Bistro Facts Bar -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
+        <div class="bg-white rounded-3xl border border-sand shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-sand">
+            <div class="p-6 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-linen text-terracotta flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 2"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-slatewarm font-semibold">Daily Hours</p>
+                    <p class="font-display text-lg font-semibold text-espresso mt-0.5 tabular-nums"
+                       th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</p>
+                    <p class="text-xs text-slatewarm mt-0.5" th:text="${businessStatus.subline()}">Dine-in &amp; reservations</p>
+                </div>
+            </div>
+            <div class="p-6 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-linen text-forest flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-5.686 7-11a7 7 0 1 0-14 0c0 5.314 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-slatewarm font-semibold">Location</p>
+                    <p class="font-display text-lg font-semibold text-espresso mt-0.5" th:text="${storeProfile.addressLine()}">
+                        Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo
+                    </p>
+                    <p class="text-xs text-terracotta font-medium mt-0.5" th:text="'Plus Code: ' + ${storeProfile.plusCode()}">VPW2+QF</p>
+                </div>
+            </div>
+            <div class="p-6 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-linen text-calamansi flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 13h11l3 3v3H4v-6Zm11 0V7h3l2 4v2M7 19a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.14em] text-slatewarm font-semibold">Dine-In &amp; Delivery</p>
+                    <p class="font-display text-lg font-semibold text-espresso mt-0.5">All-Day Ilonggo Kitchen</p>
+                    <p class="text-xs text-slatewarm mt-0.5">Breakfast · Lunch · Merienda · On-Demand Rider</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Four Dayparts Story Strip -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+            <div>
+                <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">From Morning Coffee to Evening Dinner</p>
+                <h2 class="font-display text-3xl sm:text-4xl font-semibold text-espresso mt-2">
+                    Four ways to enjoy Ilonggo Bistro
+                </h2>
+            </div>
+            <a th:href="@{/menu}" class="text-sm font-semibold text-terracotta hover:text-terracotta-dark transition-colors">
+                Browse full menu →
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <a th:each="cat : ${categories}"
+               th:href="@{/menu(category=${cat.slug})}"
+               class="group rounded-3xl bg-white border border-sand p-6 hover:border-terracotta/50 hover:shadow-md transition-all flex flex-col justify-between gap-4">
+                <div>
+                    <span class="inline-block text-[11px] font-semibold uppercase tracking-wider text-forest bg-linen px-3 py-1 rounded-full"
+                          th:text="${cat.daypart}">All Day</span>
+                    <h3 class="font-display text-xl font-semibold text-espresso mt-3 group-hover:text-terracotta transition-colors"
+                        th:text="${cat.name}">Category</h3>
+                    <p class="text-xs text-slatewarm leading-relaxed mt-2" th:text="${cat.description}">Description</p>
+                </div>
+                <span class="text-xs font-semibold text-terracotta">Explore dishes →</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Signature Featured Dishes -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+            <div>
+                <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">House Signatures</p>
+                <h2 class="font-display text-3xl sm:text-4xl font-semibold text-espresso mt-2">
+                    Beloved dishes on our Barotac Nuevo table
+                </h2>
+            </div>
+            <a th:href="@{/menu}"
+               class="inline-flex items-center justify-center rounded-full border border-espresso/20 hover:border-terracotta hover:text-terracotta px-5 py-2.5 text-sm font-semibold transition-colors">
+                View All Menu Items
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <article th:each="item : ${featuredItems}"
+                     class="group bg-white rounded-3xl border border-sand overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col">
+                <div class="relative aspect-[4/3] overflow-hidden bg-linen">
+                    <img th:src="${item.effectiveImageUrl()}" th:alt="${item.name}" loading="lazy"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <span th:if="${item.badgeLabel != null}"
+                          class="absolute top-3 left-3 text-[11px] font-semibold uppercase tracking-wider bg-forest/90 text-alabaster px-3 py-1 rounded-full"
+                          th:text="${item.badgeLabel}">Bestseller</span>
+                </div>
+                <div class="p-6 flex-1 flex flex-col justify-between gap-3">
+                    <div>
+                        <div class="flex items-start justify-between gap-3">
+                            <h3 class="font-display text-xl font-semibold text-espresso" th:text="${item.name}">Dish Name</h3>
+                            <span class="font-display text-lg font-bold text-forest tabular-nums whitespace-nowrap"
+                                  th:text="${item.formattedPrice()}">₱195</span>
+                        </div>
+                        <p class="text-sm text-slatewarm mt-2 leading-relaxed" th:text="${item.description}">Description</p>
+                    </div>
+                    <p class="text-xs font-medium text-terracotta pt-2" th:text="${item.category.name}">Category</p>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Bistro Vibe & Hospitality Split Feature -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
+        <div class="bg-forest text-alabaster rounded-[2rem] overflow-hidden grid grid-cols-1 lg:grid-cols-2 shadow-xl">
+            <div class="aspect-[4/3] lg:aspect-auto relative">
+                <img src="/images/vibe-evening.jpg" alt="Evening dining ambiance at Ilonggo Bistro"
+                     class="w-full h-full object-cover">
+            </div>
+            <div class="p-8 sm:p-12 lg:p-14 flex flex-col justify-center space-y-6">
+                <p class="text-xs uppercase tracking-[0.18em] text-calamansi font-semibold">The Vibe · Dine-In First</p>
+                <h2 class="font-display text-3xl sm:text-4xl font-semibold text-white leading-tight">
+                    Sunlit mornings, unhurried family lunches, and warm evening catch-ups.
+                </h2>
+                <p class="text-sm sm:text-base text-alabaster/80 leading-relaxed">
+                    Whether you're stopping in after a morning walk around Barotac Nuevo plaza, celebrating a Sunday lunch with family,
+                    or catching up over evening plates before 9 PM, our dining room is built for genuine Ilonggo hospitality.
+                </p>
+                <div class="grid grid-cols-2 gap-4 pt-2 text-sm">
+                    <div class="rounded-2xl bg-white/10 p-4">
+                        <div class="font-display text-xl font-semibold text-white">7:00 AM</div>
+                        <div class="text-xs text-alabaster/70 mt-1">Fresh silog & native tablea coffee</div>
+                    </div>
+                    <div class="rounded-2xl bg-white/10 p-4">
+                        <div class="font-display text-xl font-semibold text-white">9:00 PM</div>
+                        <div class="text-xs text-alabaster/70 mt-1">Warm dinner service & evening coolers</div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 pt-2">
+                    <a th:href="@{/reservations}"
+                       class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-6 py-3 text-sm transition-colors">
+                        Book Your Table
+                    </a>
+                    <a th:href="@{/gallery}"
+                       class="inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 text-sm transition-colors">
+                        See Food & Vibe Photos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visit Us & Interactive Map -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            <div class="lg:col-span-5 bg-white rounded-3xl border border-sand p-8 sm:p-10 flex flex-col justify-between space-y-6">
+                <div class="space-y-4">
+                    <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Find Us in Iloilo</p>
+                    <h2 class="font-display text-3xl font-semibold text-espresso">Visit Ilonggo Bistro</h2>
+                    <div class="space-y-3 text-sm text-slatewarm pt-2">
+                        <div>
+                            <div class="font-semibold text-espresso">Address</div>
+                            <p th:text="${storeProfile.addressLine()}">Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo</p>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-espresso">Google Plus Code</div>
+                            <p class="font-mono text-xs text-forest bg-linen inline-block px-2.5 py-1 rounded-lg mt-1"
+                               th:text="${storeProfile.plusCode()}">VPW2+QF Barotac Nuevo, Iloilo</p>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-espresso">Opening Hours</div>
+                            <p class="tabular-nums">Monday – Sunday · <span th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</span></p>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-espresso">Service Style</div>
+                            <p>Dine-in · Table Reservations · Group Celebrations</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 pt-4 border-t border-sand">
+                    <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+                       class="inline-flex items-center justify-center rounded-full bg-forest hover:bg-forest-soft text-white font-semibold px-6 py-3 text-sm transition-colors">
+                        Open in Google Maps ↗
+                    </a>
+                    <a th:href="@{/contact}"
+                       class="inline-flex items-center justify-center rounded-full border border-sand hover:border-terracotta text-espresso font-semibold px-6 py-3 text-sm transition-colors">
+                        Contact Us
+                    </a>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 rounded-3xl overflow-hidden border border-sand bg-linen min-h-[340px] shadow-xs">
+                <iframe title="Ilonggo Bistro Location Map — Burgos-Osmeña St, Barotac Nuevo, Iloilo"
+                        src="https://maps.google.com/maps?q=Burgos-Osme%C3%B1a%20St%2C%20Barotac%20Nuevo%2C%205007%20Iloilo&t=&z=16&ie=UTF8&iwloc=&output=embed"
+                        class="w-full h-full min-h-[340px] border-0"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

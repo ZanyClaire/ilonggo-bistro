@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="options">
+    <option th:if="${#lists.isEmpty(timeSlots)}" value="">No remaining slots for this date — try tomorrow</option>
+    <option th:each="slot : ${timeSlots}"
+            th:value="${#temporals.format(slot, 'HH:mm')}"
+            th:selected="${selectedTime != null and selectedTime.equals(slot)}"
+            th:text="${#temporals.format(slot, 'h:mm a')}">12:00 PM</option>
+</th:block>
+</body>
+</html>

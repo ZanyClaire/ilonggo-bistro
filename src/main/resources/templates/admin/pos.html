@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('POS Terminal', ~{::section})}">
+<section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+    <!-- LEFT: Menu Catalog Picker -->
+    <div class="xl:col-span-7 space-y-4">
+        <div class="bg-white rounded-3xl border border-sand p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <input id="pos-search" type="search" oninput="filterPosCatalog()"
+                       placeholder="Search dishes by name..."
+                       class="flex-1 rounded-2xl bg-alabaster border border-sand px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                <div class="text-xs font-semibold text-forest bg-linen px-4 py-2.5 rounded-2xl tabular-nums whitespace-nowrap">
+                    Today: <span th:text="${salesSummary.formattedTodayRevenue()}">₱0.00</span>
+                    (<span th:text="${salesSummary.todayOrders()}">0</span>)
+                </div>
+            </div>
+
+            <!-- Category Tabs -->
+            <div class="flex flex-wrap gap-2">
+                <button type="button" data-cat="all" onclick="selectPosCategory(this)"
+                        class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-forest text-white border-forest cursor-pointer">
+                    All Categories
+                </button>
+                <button th:each="cat : ${categories}"
+                        type="button"
+                        th:data-cat="${cat.slug}"
+                        onclick="selectPosCategory(this)"
+                        class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-white text-espresso border-sand hover:border-forest cursor-pointer"
+                        th:text="${cat.name}">Category</button>
+            </div>
+        </div>
+
+        <!-- Dish Tiles Grid -->
+        <div id="pos-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+            <button th:each="item : ${menuItems}"
+                    type="button"
+                    th:disabled="${!item.available}"
+                    th:data-id="${item.id}"
+                    th:data-name="${item.name}"
+                    th:data-price="${item.pricePhp}"
+                    th:data-cat="${item.category.slug}"
+                    onclick="addToCart(this)"
+                    th:classappend="${!item.available} ? 'opacity-50 cursor-not-allowed' : 'hover:border-terracotta hover:shadow-md cursor-pointer active:scale-[0.98]'"
+                    class="pos-item-card text-left bg-white rounded-2xl border border-sand overflow-hidden transition-all flex flex-col">
+                <div class="aspect-[16/10] bg-linen relative overflow-hidden">
+                    <img th:src="${item.effectiveImageUrl()}" th:alt="${item.name}" loading="lazy"
+                         class="w-full h-full object-cover">
+                    <span th:if="${!item.available}"
+                          class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-espresso/90 text-white px-2 py-0.5 rounded-full">
+                        Sold Out
+                    </span>
+                    <span th:id="'badge-qty-' + ${item.id}"
+                          class="hidden absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-terracotta text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                        0
+                    </span>
+                </div>
+                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
+                    <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slatewarm font-semibold" th:text="${item.category.name}">Category</p>
+                        <h3 class="font-display text-sm font-semibold text-espresso leading-snug mt-0.5" th:text="${item.name}">Dish</h3>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="font-bold text-sm text-forest tabular-nums" th:text="${item.formattedPrice()}">₱195</span>
+                        <span th:if="${item.available}" class="text-[11px] font-semibold text-terracotta">+ Add</span>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Active Order Ticket & Checkout -->
+    <div class="xl:col-span-5 bg-white rounded-3xl border border-sand p-6 shadow-xs space-y-5 xl:sticky xl:top-6">
+        <div class="flex items-center justify-between pb-3 border-b border-sand">
+            <div>
+                <h2 class="font-display text-xl font-semibold text-espresso">Current Order Ticket</h2>
+                <p class="text-xs text-slatewarm">Tap dishes on the left to build the receipt.</p>
+            </div>
+            <button type="button" onclick="clearCart()"
+                    class="text-xs font-semibold text-red-700 hover:underline cursor-pointer">Clear</button>
+        </div>
+
+        <div id="pos-error" class="hidden rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-900 font-medium"></div>
+
+        <!-- Buyer & Order Type Info -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label for="buyerName" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Buyer / Customer Name</label>
+                <input id="buyerName" type="text" placeholder="Walk-in Guest"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+            </div>
+            <div>
+                <label for="buyerPhone" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Phone (Optional)</label>
+                <input id="buyerPhone" type="tel" placeholder="0917 ..."
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+            </div>
+            <div>
+                <label for="orderType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Order Type</label>
+                <select id="orderType" onchange="toggleTableField()"
+                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                    <option th:each="ot : ${orderTypes}" th:value="${ot.name()}" th:text="${ot.label}">Dine-In</option>
+                </select>
+            </div>
+            <div id="tableFieldWrap">
+                <label for="tableNumber" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Table / Area</label>
+                <input id="tableNumber" type="text" value="Table 1" placeholder="Table 1 / Counter"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+            </div>
+        </div>
+
+        <!-- Cart Lines -->
+        <div id="cart-lines" class="max-h-64 overflow-y-auto divide-y divide-sand border-y border-sand py-2 space-y-1">
+            <p class="py-8 text-center text-xs text-slatewarm">No items in cart yet. Click dishes on the left to add.</p>
+        </div>
+
+        <!-- Discount & Payment Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label for="discountType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Discount</label>
+                <select id="discountType" onchange="onDiscountChange()"
+                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                    <option value="NONE">None</option>
+                    <option value="SENIOR_PWD">Senior / PWD (20%)</option>
+                    <option value="CUSTOM">Custom Amount (₱)</option>
+                </select>
+            </div>
+            <div>
+                <label for="paymentMethod" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Payment Method</label>
+                <select id="paymentMethod" onchange="onPaymentMethodChange()"
+                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                    <option th:each="pm : ${paymentMethods}" th:value="${pm.name()}" th:text="${pm.label}">Cash</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="customDiscountWrap" class="hidden">
+            <label for="customDiscountPhp" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Custom Discount (₱)</label>
+            <input id="customDiscountPhp" type="number" step="0.01" min="0" value="0" oninput="recalcTotals()"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm tabular-nums">
+        </div>
+
+        <!-- Totals Box -->
+        <div class="rounded-2xl bg-alabaster border border-sand p-4 space-y-2 text-sm">
+            <div class="flex justify-between text-slatewarm">
+                <span>Subtotal</span>
+                <span id="summary-subtotal" class="tabular-nums font-medium">₱0.00</span>
+            </div>
+            <div id="summary-discount-row" class="hidden flex justify-between text-emerald-800">
+                <span id="summary-discount-label">Discount</span>
+                <span id="summary-discount" class="tabular-nums font-medium">-₱0.00</span>
+            </div>
+            <div class="flex justify-between text-lg font-display font-bold text-espresso pt-2 border-t border-sand">
+                <span>Total Due</span>
+                <span id="summary-total" class="tabular-nums text-forest">₱0.00</span>
+            </div>
+        </div>
+
+        <!-- Cash Tendered & Quick Denominations -->
+        <div id="cashTenderWrap" class="space-y-2.5">
+            <div class="flex items-center justify-between">
+                <label for="amountTendered" class="text-[11px] font-semibold uppercase tracking-wider text-slatewarm">Cash Received (₱)</label>
+                <div class="flex gap-1.5">
+                    <button type="button" onclick="setExactCash()" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">Exact</button>
+                    <button type="button" onclick="setCash(200)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱200</button>
+                    <button type="button" onclick="setCash(500)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱500</button>
+                    <button type="button" onclick="setCash(1000)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱1,000</button>
+                </div>
+            </div>
+            <input id="amountTendered" type="number" step="0.01" min="0" placeholder="0.00" oninput="recalcTotals()"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-base font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+            <div class="flex justify-between items-center text-sm font-semibold px-1">
+                <span class="text-slatewarm">Change Due</span>
+                <span id="summary-change" class="tabular-nums text-terracotta text-base">₱0.00</span>
+            </div>
+        </div>
+
+        <div>
+            <input id="orderNotes" type="text" placeholder="Kitchen / receipt notes (optional)..."
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+        </div>
+
+        <button id="checkoutBtn" type="button" onclick="submitPosOrder()"
+                class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm shadow-sm transition-colors cursor-pointer">
+            Complete Order &amp; Generate Receipt
+        </button>
+    </div>
+
+    <script>
+        const cart = new Map();
+        let activeCat = 'all';
+        let latestTotal = 0;
+
+        function formatPhp(n) {
+            return '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function selectPosCategory(btn) {
+            activeCat = btn.dataset.cat;
+            document.querySelectorAll('.pos-cat-btn').forEach(el => {
+                el.classList.remove('bg-forest', 'text-white', 'border-forest');
+                el.classList.add('bg-white', 'text-espresso', 'border-sand');
+            });
+            btn.classList.remove('bg-white', 'text-espresso', 'border-sand');
+            btn.classList.add('bg-forest', 'text-white', 'border-forest');
+            filterPosCatalog();
+        }
+
+        function filterPosCatalog() {
+            const q = (document.getElementById('pos-search').value || '').trim().toLowerCase();
+            document.querySelectorAll('.pos-item-card').forEach(card => {
+                const catMatch = activeCat === 'all' || card.dataset.cat === activeCat;
+                const nameMatch = !q || card.dataset.name.toLowerCase().includes(q);
+                card.classList.toggle('hidden', !(catMatch && nameMatch));
+            });
+        }
+
+        function addToCart(btn) {
+            const id = Number(btn.dataset.id);
+            const existing = cart.get(id);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.set(id, { id, name: btn.dataset.name, price: parseFloat(btn.dataset.price), qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQty(id, delta) {
+            const item = cart.get(id);
+            if (!item) return;
+            item.qty += delta;
+            if (item.qty <= 0) cart.delete(id);
+            renderCart();
+        }
+
+        function clearCart() {
+            cart.clear();
+            document.getElementById('amountTendered').value = '';
+            hideError();
+            renderCart();
+        }
+
+        function renderCart() {
+            document.querySelectorAll('[id^="badge-qty-"]').forEach(b => {
+                b.classList.add('hidden');
+                b.textContent = '0';
+            });
+
+            const container = document.getElementById('cart-lines');
+            if (cart.size === 0) {
+                container.innerHTML = '<p class="py-8 text-center text-xs text-slatewarm">No items in cart yet. Click dishes on the left to add.</p>';
+                recalcTotals();
+                return;
+            }
+
+            let html = '';
+            cart.forEach(item => {
+                const badge = document.getElementById('badge-qty-' + item.id);
+                if (badge) {
+                    badge.textContent = item.qty;
+                    badge.classList.remove('hidden');
+                }
+                const lineTotal = item.price * item.qty;
+                html += `
+                    <div class="py-2.5 flex items-center justify-between gap-2 text-sm">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-semibold text-espresso truncate">${escapeHtml(item.name)}</div>
+                            <div class="text-xs text-slatewarm tabular-nums">${formatPhp(item.price)} each</div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="updateQty(${item.id}, -1)" class="w-7 h-7 rounded-lg bg-linen hover:bg-sand font-bold cursor-pointer">−</button>
+                            <span class="w-6 text-center font-semibold tabular-nums">${item.qty}</span>
+                            <button type="button" onclick="updateQty(${item.id}, 1)" class="w-7 h-7 rounded-lg bg-linen hover:bg-sand font-bold cursor-pointer">+</button>
+                        </div>
+                        <div class="w-20 text-right font-semibold tabular-nums text-forest">${formatPhp(lineTotal)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+            recalcTotals();
+        }
+
+        function onDiscountChange() {
+            const type = document.getElementById('discountType').value;
+            document.getElementById('customDiscountWrap').classList.toggle('hidden', type !== 'CUSTOM');
+            recalcTotals();
+        }
+
+        function onPaymentMethodChange() {
+            const pm = document.getElementById('paymentMethod').value;
+            document.getElementById('cashTenderWrap').classList.toggle('hidden', pm !== 'CASH');
+            recalcTotals();
+        }
+
+        function toggleTableField() {
+            const ot = document.getElementById('orderType').value;
+            document.getElementById('tableFieldWrap').classList.toggle('hidden', ot !== 'DINE_IN');
+        }
+
+        function setExactCash() {
+            document.getElementById('amountTendered').value = latestTotal.toFixed(2);
+            recalcTotals();
+        }
+
+        function setCash(amount) {
+            document.getElementById('amountTendered').value = Number(amount).toFixed(2);
+            recalcTotals();
+        }
+
+        function recalcTotals() {
+            let subtotal = 0;
+            cart.forEach(item => { subtotal += item.price * item.qty; });
+
+            const discountType = document.getElementById('discountType').value;
+            let discount = 0;
+            let discountLabel = '';
+            if (discountType === 'SENIOR_PWD') {
+                discount = Math.round(subtotal * 20) / 100;
+                discountLabel = 'Senior / PWD (20%)';
+            } else if (discountType === 'CUSTOM') {
+                const raw = parseFloat(document.getElementById('customDiscountPhp').value) || 0;
+                discount = Math.min(Math.max(raw, 0), subtotal);
+                discountLabel = 'Custom Discount';
+            }
+
+            latestTotal = Math.max(subtotal - discount, 0);
+
+            document.getElementById('summary-subtotal').textContent = formatPhp(subtotal);
+            const discRow = document.getElementById('summary-discount-row');
+            if (discount > 0) {
+                discRow.classList.remove('hidden');
+                document.getElementById('summary-discount-label').textContent = discountLabel;
+                document.getElementById('summary-discount').textContent = '-' + formatPhp(discount);
+            } else {
+                discRow.classList.add('hidden');
+            }
+            document.getElementById('summary-total').textContent = formatPhp(latestTotal);
+
+            const tendered = parseFloat(document.getElementById('amountTendered').value) || 0;
+            const change = Math.max(tendered - latestTotal, 0);
+            document.getElementById('summary-change').textContent = formatPhp(change);
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('pos-error');
+            box.textContent = msg;
+            box.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('pos-error').classList.add('hidden');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        async function submitPosOrder() {
+            hideError();
+            if (cart.size === 0) {
+                showError('Add at least one menu item before completing checkout.');
+                return;
+            }
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const tenderedInput = parseFloat(document.getElementById('amountTendered').value);
+            if (paymentMethod === 'CASH' && (isNaN(tenderedInput) || tenderedInput < latestTotal)) {
+                showError('Please enter cash received of at least ' + formatPhp(latestTotal) + ' (or tap Exact).');
+                return;
+            }
+
+            const btn = document.getElementById('checkoutBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing Receipt...';
+
+            const payload = {
+                customerName: document.getElementById('buyerName').value.trim(),
+                customerPhone: document.getElementById('buyerPhone').value.trim(),
+                orderType: document.getElementById('orderType').value,
+                tableNumber: document.getElementById('tableNumber').value.trim(),
+                paymentMethod: paymentMethod,
+                discountType: document.getElementById('discountType').value,
+                customDiscountPhp: parseFloat(document.getElementById('customDiscountPhp').value) || 0,
+                amountTenderedPhp: paymentMethod === 'CASH' ? tenderedInput : latestTotal,
+                notes: document.getElementById('orderNotes').value.trim(),
+                items: Array.from(cart.values()).map(i => ({ menuItemId: i.id, quantity: i.qty }))
+            };
+
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+            try {
+                const res = await fetch('/admin/pos/checkout', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showError(data.error || 'Could not process order.');
+                    btn.disabled = false;
+                    btn.textContent = 'Complete Order & Generate Receipt';
+                    return;
+                }
+                window.location.href = data.redirectUrl;
+            } catch (err) {
+                showError('Network error while saving order. Please retry.');
+                btn.disabled = false;
+                btn.textContent = 'Complete Order & Generate Receipt';
+            }
+        }
+    </script>
+</section>
+</html>

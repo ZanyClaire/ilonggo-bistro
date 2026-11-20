@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: ilonggo-bistro
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Manila
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 50MB
+  thymeleaf:
+    encoding: UTF-8
+
+server:
+  port: ${PORT:8080}
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json,image/svg+xml
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  timezone: Asia/Manila
+  upload-dir: ${APP_UPLOAD_DIR:./uploads}
+  admin:
+    default-username: ${APP_ADMIN_USERNAME:admin}
+    default-password: ${APP_ADMIN_PASSWORD:bistro2026!}
+    default-email: ${APP_ADMIN_EMAIL:ilonggobistro.admin@gmail.com}
+    default-phone: ${APP_ADMIN_PHONE:+63 917 800 2025}
+  mail:
+    provider: ${MAIL_PROVIDER:SIMULATOR}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:no-reply@ilonggobistro.ph}
+  whatsapp:
+    provider: ${WHATSAPP_PROVIDER:SIMULATOR}
+    api-token: ${WHATSAPP_API_TOKEN:}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+  google-oauth:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+  delivery:
+    provider: ${DELIVERY_PROVIDER:SIMULATOR}
+    api-client-id: ${API_CLIENT_ID:}
+    api-client-secret: ${API_CLIENT_SECRET:}
+    api-base-url: ${DELIVERY_API_BASE_URL:}
+    webhook-secret: ${DELIVERY_WEBHOOK_SECRET:}
+    store-lat: ${STORE_LAT:10.8969}
+    store-lng: ${STORE_LNG:122.7022}
+    store-address: ${STORE_ADDRESS:Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo}
+    auto-dispatch: ${DELIVERY_AUTO_DISPATCH:false}
+    courier-max-km: 8.0
+    inhouse-max-km: 15.0

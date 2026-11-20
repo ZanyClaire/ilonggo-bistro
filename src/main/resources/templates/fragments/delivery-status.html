@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="tracker" id="live-delivery-tracker"
+     th:attr="hx-get=${delivery != null and !delivery.status.terminal} ? @{/orders/{ref}/status-fragment(ref=${order.receiptNumber})} : null"
+     th:attrappend="hx-trigger=${delivery != null and !delivery.status.terminal} ? 'every 5s' : null"
+     hx-swap="outerHTML"
+     class="space-y-6">
+
+    <!-- Status Headline -->
+    <div th:if="${delivery != null}" class="bg-white rounded-3xl border border-sand p-6 sm:p-8 shadow-xs space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-xs uppercase tracking-[0.16em] text-terracotta font-semibold">Live Delivery Status</p>
+                <h2 class="font-display text-2xl sm:text-3xl font-semibold text-espresso mt-1"
+                    th:text="${delivery.status.label}">Awaiting Dispatch</h2>
+                <p class="text-xs text-slatewarm mt-1">
+                    Updated <span th:text="${delivery.formattedUpdatedAt()}">just now</span> ·
+                    Estimated arrival <strong class="text-forest" th:text="${delivery.etaRange()}">25–35 mins</strong>
+                </p>
+            </div>
+            <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border"
+                  th:classappend="${delivery.status.name() == 'DELIVERED'} ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                    : (${delivery.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
+                    : 'bg-amber-50 text-amber-900 border-amber-200')"
+                  th:text="${delivery.provider.label}">Provider</span>
+        </div>
+
+        <!-- 5-Step Progress Bar -->
+        <div th:if="${delivery.status.name() != 'CANCELLED'}" class="grid grid-cols-5 gap-2 text-center pt-2">
+            <div th:each="stepLabel, iter : ${ {'Order Placed', 'Finding Rider', 'Rider Assigned', 'Out for Delivery', 'Delivered'} }"
+                 class="space-y-2">
+                <div class="h-2 rounded-full transition-colors"
+                     th:classappend="${delivery.status.step >= (iter.index + 1)} ? 'bg-terracotta' : 'bg-sand'"></div>
+                <p class="text-[11px] font-semibold leading-tight"
+                   th:classappend="${delivery.status.step >= (iter.index + 1)} ? 'text-espresso' : 'text-slatewarm/60'"
+                   th:text="${stepLabel}">Step</p>
+            </div>
+        </div>
+
+        <!-- Assigned Rider Card -->
+        <div th:if="${delivery.hasRiderAssigned()}"
+             class="rounded-2xl bg-forest text-alabaster p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <p class="text-[11px] uppercase tracking-widest text-calamansi font-semibold">Assigned Delivery Rider</p>
+                <div class="font-display text-xl font-semibold text-white" th:text="${delivery.riderName}">Rider Name</div>
+                <div class="text-xs text-alabaster/85 flex flex-wrap gap-3">
+                    <span>Plate: <strong class="font-mono text-white" th:text="${delivery.riderPlateNumber ?: 'N/A'}">ILO-6042</strong></span>
+                    <span th:if="${delivery.riderPhone != null}">Phone: <strong class="text-white" th:text="${delivery.riderPhone}">0917</strong></span>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a th:if="${delivery.riderPhone != null}" th:href="'tel:' + ${delivery.riderPhone}"
+                   class="rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-semibold px-4 py-2.5">
+                    Call Rider
+                </a>
+                <a th:if="${delivery.trackingUrl != null and !delivery.trackingUrl.isBlank()}"
+                   th:href="${delivery.trackingUrl}"
+                   th:target="${delivery.trackingUrl.startsWith('http')} ? '_blank' : '_self'"
+                   class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-5 py-2.5">
+                    Track Rider ↗
+                </a>
+            </div>
+        </div>
+
+        <!-- Waiting for Rider Notice -->
+        <div th:if="${!delivery.hasRiderAssigned() and delivery.status.name() != 'CANCELLED'}"
+             class="rounded-2xl bg-linen border border-sand p-4 text-xs text-slatewarm flex items-center justify-between gap-3">
+            <span>Our kitchen in Barotac Nuevo is preparing your order and coordinating your rider. This page updates automatically every 5 seconds.</span>
+            <a th:if="${delivery.trackingUrl != null and !delivery.trackingUrl.isBlank()}"
+               th:href="${delivery.trackingUrl}"
+               class="rounded-full bg-forest text-white font-semibold px-4 py-2 whitespace-nowrap">
+                Track Rider
+            </a>
+        </div>
+    </div>
+
+    <!-- Pickup Order Notice -->
+    <div th:if="${delivery == null}" class="bg-white rounded-3xl border border-sand p-6 space-y-2">
+        <p class="text-xs uppercase tracking-[0.16em] text-terracotta font-semibold">Counter Pickup Order</p>
+        <h2 class="font-display text-2xl font-semibold text-espresso">Your order is being prepared for pickup</h2>
+        <p class="text-sm text-slatewarm">Show reference <strong class="font-mono text-forest" th:text="${order.receiptNumber}">OR-2026</strong> at Burgos-Osmeña St, Barotac Nuevo.</p>
+    </div>
+</div>
+</body>
+</html>

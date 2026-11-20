@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/admin-layout :: adminPage('Delivery Dispatch Console', ~{::section})}">
+<section class="space-y-6">
+    <!-- Provider & Credential Readiness Banner -->
+    <div class="rounded-3xl bg-forest text-alabaster p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] uppercase tracking-widest text-calamansi font-bold">Active Courier Engine</span>
+                <span class="px-3 py-0.5 rounded-full bg-white/15 text-xs font-semibold text-white"
+                      th:text="${activeProvider.label}">Simulator</span>
+            </div>
+            <p th:if="${!hasLiveCredentials}" class="text-xs text-alabaster/80">
+                Running in built-in <strong>Sandbox Simulator + In-House Rider</strong> mode (no API keys needed yet).
+                When ready for live couriers, set env vars
+                <code class="bg-white/10 px-1.5 py-0.5 rounded">DELIVERY_PROVIDER</code> (<code class="bg-white/10 px-1 rounded">PANDAGO</code> or <code class="bg-white/10 px-1 rounded">GRABEXPRESS</code>),
+                <code class="bg-white/10 px-1.5 py-0.5 rounded">API_CLIENT_ID</code>, and <code class="bg-white/10 px-1.5 py-0.5 rounded">API_CLIENT_SECRET</code>.
+            </p>
+            <p th:if="${hasLiveCredentials}" class="text-xs text-emerald-200">
+                Live courier API credentials detected. Webhook receiver listening at <code class="bg-white/10 px-1.5 py-0.5 rounded">POST /api/webhooks/delivery</code>.
+            </p>
+        </div>
+        <a th:href="@{/order}" target="_blank"
+           class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-5 py-2.5 whitespace-nowrap text-center">
+            Open Customer Delivery Checkout ↗
+        </a>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="flex flex-wrap gap-2">
+        <a th:href="@{/admin/deliveries(status='ALL')}"
+           th:classappend="${activeStatus == 'ALL'} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+           class="px-4 py-2 rounded-full text-xs font-semibold border">All Deliveries</a>
+        <a th:each="st : ${statuses}"
+           th:href="@{/admin/deliveries(status=${st.name()})}"
+           th:classappend="${activeStatus == st.name()} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+           class="px-4 py-2 rounded-full text-xs font-semibold border"
+           th:text="${st.label}">Status</a>
+    </div>
+
+    <!-- Empty State -->
+    <div th:if="${#lists.isEmpty(deliveries)}" class="bg-white rounded-3xl border border-sand p-12 text-center space-y-2">
+        <p class="font-display text-2xl text-espresso">No delivery orders match this filter</p>
+        <p class="text-xs text-slatewarm">Orders placed on <a th:href="@{/order}" class="text-terracotta underline">/order</a> with Delivery selected appear here automatically.</p>
+    </div>
+
+    <!-- Delivery Dispatch Cards -->
+    <div class="space-y-5">
+        <div th:each="del : ${deliveries}" class="bg-white rounded-3xl border border-sand p-6 shadow-xs space-y-5">
+            <!-- Card Header -->
+            <div class="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-sand">
+                <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-mono text-sm font-bold text-forest" th:text="${del.order.receiptNumber}">OR-2026-DEL01</span>
+                        <span class="px-3 py-0.5 rounded-full text-xs font-bold border"
+                              th:classappend="${del.status.name() == 'DELIVERED'} ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                                : (${del.status.name() == 'OUT_OF_COVERAGE' or del.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
+                                : 'bg-amber-50 text-amber-900 border-amber-200')"
+                              th:text="${del.status.label}">Awaiting Dispatch</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-linen text-espresso"
+                              th:text="${del.provider.label}">Provider</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                              th:classappend="${del.order.paymentStatus == 'CASH_ON_DELIVERY'} ? 'bg-terracotta/15 text-terracotta' : 'bg-emerald-100 text-emerald-900'"
+                              th:text="${del.order.paymentStatus == 'CASH_ON_DELIVERY' ? 'COD: ' + del.order.formattedTotal() : 'PAID: ' + del.order.formattedTotal()}">COD</span>
+                    </div>
+                    <p class="text-xs text-slatewarm">
+                        Customer: <strong class="text-espresso" th:text="${del.order.customerName}">Name</strong> ·
+                        <span th:text="${del.order.customerPhone}">Phone</span> ·
+                        <span th:text="${del.distanceKm} + ' km'">2.8 km</span> (Fee: <span th:text="${del.formattedFee()}">₱57.00</span>)
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <a th:href="@{/orders/{ref}(ref=${del.order.receiptNumber})}" target="_blank"
+                       class="rounded-full border border-sand bg-alabaster hover:border-forest text-espresso text-xs font-semibold px-4 py-2">
+                        Customer Tracking View ↗
+                    </a>
+                    <a th:href="@{/admin/pos/receipt/{ref}(ref=${del.order.receiptNumber})}"
+                       class="rounded-full border border-sand bg-white text-espresso text-xs font-semibold px-4 py-2">
+                        Receipt
+                    </a>
+                </div>
+            </div>
+
+            <!-- Address + Items + Rider Info -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
+                <div class="lg:col-span-5 space-y-2">
+                    <p class="font-bold uppercase tracking-wider text-slatewarm text-[10px]">Drop-Off Destination</p>
+                    <p class="text-sm font-semibold text-espresso" th:text="${del.dropoffAddress}">Address</p>
+                    <p th:if="${del.dropoffLandmark != null and !del.dropoffLandmark.isBlank()}" class="text-terracotta font-medium"
+                       th:text="'Landmark: ' + ${del.dropoffLandmark}">Landmark</p>
+                    <p class="font-mono text-[11px] text-slatewarm"
+                       th:text="'Pin: ' + ${#numbers.formatDecimal(del.dropoffLat, 1, 5)} + ', ' + ${#numbers.formatDecimal(del.dropoffLng, 1, 5)}"></p>
+                </div>
+
+                <div class="lg:col-span-4 space-y-1.5">
+                    <p class="font-bold uppercase tracking-wider text-slatewarm text-[10px]">Order Items</p>
+                    <ul class="space-y-1">
+                        <li th:each="item : ${del.order.items}" class="flex justify-between gap-2">
+                            <span th:text="${item.quantity} + ' × ' + ${item.itemName}">1 × Dish</span>
+                            <span class="tabular-nums text-slatewarm" th:text="${item.formattedLineTotal()}">₱195</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="lg:col-span-3 space-y-1.5 bg-alabaster rounded-2xl p-4 border border-sand">
+                    <p class="font-bold uppercase tracking-wider text-slatewarm text-[10px]">Assigned Rider</p>
+                    <div th:if="${del.hasRiderAssigned()}" class="space-y-1">
+                        <p class="font-semibold text-sm text-espresso" th:text="${del.riderName}">Rider</p>
+                        <p class="text-slatewarm" th:text="${del.riderPhone}">Phone</p>
+                        <p class="font-mono text-forest font-bold" th:text="'Plate: ' + ${del.riderPlateNumber ?: 'N/A'}">Plate</p>
+                        <p th:if="${del.externalDeliveryId != null}" class="font-mono text-[10px] text-slatewarm"
+                           th:text="'Job: ' + ${del.externalDeliveryId}">Job</p>
+                    </div>
+                    <p th:if="${!del.hasRiderAssigned()}" class="text-slatewarm">No rider assigned yet.</p>
+                </div>
+            </div>
+
+            <!-- Fallback Warning if Out of Coverage -->
+            <div th:if="${del.fallbackReason != null and !del.fallbackReason.isBlank()}"
+                 class="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-950 font-medium">
+                <strong>Fallback Notice:</strong> <span th:text="${del.fallbackReason}">Out of coverage</span>
+            </div>
+
+            <!-- Dispatch & Status Actions (ADMIN + CASHIER only; view-only for KITCHEN_STAFF) -->
+            <div sec:authorize="hasRole('KITCHEN_STAFF') and !hasAnyRole('ADMIN','CASHIER')"
+                 class="pt-3 border-t border-sand text-xs text-slatewarm italic">
+                Kitchen view-only mode — delivery dispatch and rider status updates are managed by Cashiers and Managers.
+            </div>
+            <div sec:authorize="hasAnyRole('ADMIN','CASHIER')"
+                 th:if="${!del.status.terminal}" class="pt-4 border-t border-sand space-y-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- 3rd-Party Dispatch Button -->
+                    <form th:if="${del.canDispatchCourier()}"
+                          th:action="@{/admin/deliveries/{oid}/dispatch(oid=${del.order.id})}" method="post">
+                        <button type="submit"
+                                class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-6 py-2.5 shadow-xs cursor-pointer">
+                            Dispatch Rider (<span th:text="${activeProvider.label}">Courier</span>)
+                        </button>
+                    </form>
+
+                    <!-- Simulator Webhook Test Trigger (when testing without live API keys) -->
+                    <form th:if="${del.provider.name() == 'SIMULATOR' and (del.status.name() == 'ALLOCATING' or del.status.name() == 'RIDER_ASSIGNED' or del.status.name() == 'PICKED_UP')}"
+                          th:action="@{/admin/deliveries/{did}/simulate-webhook(did=${del.id})}" method="post">
+                        <button type="submit"
+                                class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                            Simulate Next Courier Webhook →
+                        </button>
+                    </form>
+
+                    <!-- Manual Status Controls for In-House Local Rider (or override) -->
+                    <form th:if="${del.provider.name() == 'IN_HOUSE' and del.status.name() == 'RIDER_ASSIGNED'}"
+                          th:action="@{/admin/deliveries/{did}/status(did=${del.id})}" method="post">
+                        <input type="hidden" name="status" value="PICKED_UP">
+                        <button type="submit" class="rounded-full bg-forest text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                            Mark Picked Up (Out for Delivery)
+                        </button>
+                    </form>
+                    <form th:if="${del.provider.name() == 'IN_HOUSE' and del.status.name() == 'PICKED_UP'}"
+                          th:action="@{/admin/deliveries/{did}/status(did=${del.id})}" method="post">
+                        <input type="hidden" name="status" value="DELIVERED">
+                        <button type="submit" class="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                            Mark Delivered ✓
+                        </button>
+                    </form>
+                    <form th:action="@{/admin/deliveries/{did}/status(did=${del.id})}" method="post"
+                          onsubmit="return confirm('Cancel this delivery dispatch?');">
+                        <input type="hidden" name="status" value="CANCELLED">
+                        <button type="submit" class="rounded-full bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold px-4 py-2 cursor-pointer">
+                            Cancel Delivery
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Fallback / Direct In-House Local Rider Assignment Form -->
+                <form th:if="${del.canDispatchCourier() or del.status.name() == 'ALLOCATING'}"
+                      th:action="@{/admin/deliveries/{oid}/assign-inhouse(oid=${del.order.id})}" method="post"
+                      class="rounded-2xl bg-linen/70 border border-sand p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                    <div class="sm:col-span-12">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-forest">
+                            Fallback: Assign In-House Local Rider
+                        </p>
+                    </div>
+                    <div class="sm:col-span-4">
+                        <input type="text" name="riderName" required placeholder="Rider name (e.g., Kuya Nonoy)"
+                               class="w-full rounded-xl bg-white border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <input type="tel" name="riderPhone" required placeholder="Rider phone (0917...)"
+                               class="w-full rounded-xl bg-white border border-sand px-3 py-2 text-xs">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <input type="text" name="plateNumber" placeholder="Plate # (ILO-123)"
+                               class="w-full rounded-xl bg-white border border-sand px-3 py-2 text-xs uppercase">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <button type="submit"
+                                class="w-full rounded-xl bg-forest hover:bg-forest-soft text-white text-xs font-semibold py-2 px-4 cursor-pointer">
+                            Assign In-House Rider
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

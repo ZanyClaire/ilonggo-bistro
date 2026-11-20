@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Digital Menu', 'Explore the live dine-in menu at Ilonggo Bistro in Barotac Nuevo, Iloilo — Breakfast, La Paz Batchoy, Chicken Inasal, KBL, Pancit Molo, Merienda and Tablea Coffee.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+    <!-- Menu Header -->
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-sand">
+        <div class="max-w-2xl space-y-3">
+            <div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-terracotta">
+                <span>Live Dine-In Digital Menu</span>
+                <span>·</span>
+                <span th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</span>
+            </div>
+            <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">
+                Crafted in our Barotac Nuevo kitchen
+            </h1>
+            <p class="text-slatewarm text-sm sm:text-base leading-relaxed">
+                Browse dishes by daypart or search by craving. Availability updates in real time straight from our kitchen.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <a th:href="@{/order}"
+               class="inline-flex items-center justify-center rounded-full bg-forest hover:bg-forest-soft text-white text-sm font-semibold px-6 py-3 shadow-xs transition-colors">
+                Order Delivery / Pickup
+            </a>
+            <a th:href="@{/reservations}"
+               class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold px-6 py-3 shadow-xs transition-colors">
+                Reserve a Table
+            </a>
+        </div>
+    </div>
+
+    <!-- HTMX Filter Controls -->
+    <form id="menu-filter-form"
+          th:action="@{/menu}"
+          method="get"
+          hx-get="/menu/fragment"
+          hx-target="#menu-grid-container"
+          hx-swap="outerHTML"
+          hx-trigger="change, keyup delay:250ms from:#menu-search"
+          hx-indicator="#menu-loading"
+          class="py-6 space-y-5">
+
+        <div class="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+            <!-- Search Box -->
+            <div class="relative flex-1 max-w-md">
+                <input id="menu-search"
+                       type="search"
+                       name="q"
+                       th:value="${searchQuery}"
+                       placeholder="Search batchoy, inasal, coffee, silog..."
+                       class="w-full rounded-2xl bg-white border border-sand px-4 py-3 text-sm text-espresso placeholder:text-slatewarm/60 focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+            </div>
+
+            <!-- Available Only Toggle + Spinner -->
+            <div class="flex items-center gap-4">
+                <label class="inline-flex items-center gap-2.5 text-sm font-medium text-espresso cursor-pointer select-none">
+                    <input type="checkbox"
+                           name="availableOnly"
+                           value="true"
+                           th:checked="${availableOnly}"
+                           class="w-4 h-4 rounded border-sand accent-terracotta">
+                    <span>Available today only</span>
+                </label>
+                <span id="menu-loading" class="htmx-indicator text-xs font-semibold text-terracotta">Updating...</span>
+            </div>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="flex flex-wrap gap-2">
+            <label class="cursor-pointer">
+                <input type="radio" name="category" value="all" th:checked="${activeCategory == 'all'}" class="peer sr-only">
+                <span class="inline-block px-4 py-2 rounded-full text-sm font-semibold border border-sand bg-white text-espresso peer-checked:bg-forest peer-checked:text-white peer-checked:border-forest hover:border-forest/40 transition-colors">
+                    All Dishes
+                </span>
+            </label>
+            <label th:each="cat : ${categories}" class="cursor-pointer">
+                <input type="radio" name="category" th:value="${cat.slug}" th:checked="${activeCategory == cat.slug}" class="peer sr-only">
+                <span class="inline-block px-4 py-2 rounded-full text-sm font-semibold border border-sand bg-white text-espresso peer-checked:bg-forest peer-checked:text-white peer-checked:border-forest hover:border-forest/40 transition-colors"
+                      th:text="${cat.name}">Category</span>
+            </label>
+        </div>
+    </form>
+
+    <!-- Swappable Menu Grid Fragment -->
+    <div th:replace="~{fragments/menu-grid :: grid}"></div>
+</section>
+</html>

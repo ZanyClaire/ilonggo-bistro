@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Order Delivery or Pickup', 'Order Ilonggo Bistro online for on-demand rider delivery or pickup in Barotac Nuevo, Iloilo. Pin your location for instant delivery fee and ETA.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 space-y-8">
+    <!-- Leaflet CSS & JS (OpenStreetMap — zero API key required) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- Page Header -->
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-6 border-b border-sand">
+        <div class="max-w-2xl space-y-2">
+            <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Online Ordering &amp; On-Demand Delivery</p>
+            <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">Order from Ilonggo Bistro</h1>
+            <p class="text-sm sm:text-base text-slatewarm">
+                Build your meal, drop your map pin for instant delivery fee &amp; ETA, and track your rider live.
+            </p>
+        </div>
+        <a th:href="@{/menu}" class="text-sm font-semibold text-forest hover:text-terracotta">← Browse Full Photo Menu</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- LEFT: Menu Item Picker -->
+        <div class="lg:col-span-7 space-y-5">
+            <!-- Category Filter Pills -->
+            <div class="flex flex-wrap gap-2">
+                <button type="button" data-cat="all" onclick="filterOrderCat(this)"
+                        class="ord-cat-btn px-4 py-2 rounded-full text-xs font-semibold border bg-forest text-white border-forest cursor-pointer">
+                    All Dishes
+                </button>
+                <button th:each="cat : ${categories}"
+                        type="button" th:data-cat="${cat.slug}" onclick="filterOrderCat(this)"
+                        class="ord-cat-btn px-4 py-2 rounded-full text-xs font-semibold border bg-white text-espresso border-sand hover:border-forest cursor-pointer"
+                        th:text="${cat.name}">Category</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div th:each="item : ${menuItems}"
+                     th:data-cat="${item.category.slug}"
+                     class="ord-dish-card bg-white rounded-3xl border border-sand overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-all">
+                    <div class="flex gap-4 p-4">
+                        <img th:src="${item.effectiveImageUrl()}" th:alt="${item.name}" loading="lazy"
+                             class="w-22 h-22 rounded-2xl object-cover flex-shrink-0 border border-sand">
+                        <div class="min-w-0 flex-1 space-y-1">
+                            <p class="text-[10px] uppercase tracking-wider text-terracotta font-semibold" th:text="${item.category.name}">Category</p>
+                            <h3 class="font-display text-base font-semibold text-espresso leading-snug" th:text="${item.name}">Dish</h3>
+                            <p class="text-xs text-slatewarm line-clamp-2" th:text="${item.description}">Desc</p>
+                        </div>
+                    </div>
+                    <div class="px-4 py-3 bg-alabaster/70 border-t border-sand flex items-center justify-between">
+                        <span class="font-display text-base font-bold text-forest tabular-nums" th:text="${item.formattedPrice()}">₱195</span>
+                        <div class="flex items-center gap-2">
+                            <span th:id="'ord-badge-' + ${item.id}" class="hidden text-xs font-bold text-terracotta tabular-nums">0 in bag</span>
+                            <button type="button"
+                                    th:data-id="${item.id}"
+                                    th:data-name="${item.name}"
+                                    th:data-price="${item.pricePhp}"
+                                    onclick="addOrderItem(this)"
+                                    class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-4 py-1.5 cursor-pointer">
+                                + Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Checkout + Interactive Delivery Map Pin -->
+        <div class="lg:col-span-5 bg-white rounded-[2rem] border border-sand p-6 shadow-sm space-y-5 lg:sticky lg:top-24">
+            <!-- Fulfillment Mode Toggle -->
+            <div class="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-linen">
+                <button id="btn-mode-delivery" type="button" onclick="setFulfillment('DELIVERY')"
+                        class="py-2.5 rounded-xl text-xs font-bold bg-forest text-white shadow-xs transition-all cursor-pointer">
+                    Delivery (Rider)
+                </button>
+                <button id="btn-mode-pickup" type="button" onclick="setFulfillment('PICKUP')"
+                        class="py-2.5 rounded-xl text-xs font-bold text-espresso hover:bg-white/60 transition-all cursor-pointer">
+                    Counter Pickup
+                </button>
+            </div>
+
+            <div id="order-error" class="hidden rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-900 font-medium"></div>
+
+            <!-- Cart Summary -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-display text-lg font-semibold text-espresso">Your Order</h2>
+                    <button type="button" onclick="clearOrderBag()" class="text-xs text-red-700 font-semibold hover:underline cursor-pointer">Clear</button>
+                </div>
+                <div id="order-bag-lines" class="max-h-48 overflow-y-auto divide-y divide-sand border-y border-sand py-1">
+                    <p class="py-6 text-center text-xs text-slatewarm">Tap + Add on any dish to begin your order.</p>
+                </div>
+            </div>
+
+            <!-- Delivery Pin & Address Section -->
+            <div id="delivery-map-section" class="space-y-4">
+                <div class="flex items-center justify-between gap-2">
+                    <label class="text-xs font-bold uppercase tracking-wider text-forest">Drop-off Location Pin</label>
+                    <button type="button" onclick="useMyLocation()"
+                            class="text-xs font-semibold text-terracotta hover:underline cursor-pointer">
+                        Use My GPS
+                    </button>
+                </div>
+
+                <!-- Address Search Autocomplete (OpenStreetMap Nominatim) -->
+                <div class="relative">
+                    <div class="flex gap-2">
+                        <input id="address-search-input" type="text" placeholder="Search street or barangay in Iloilo..."
+                               class="flex-1 rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                        <button type="button" onclick="searchAddress()"
+                                class="rounded-xl bg-forest text-white text-xs font-semibold px-3.5 py-2 cursor-pointer">
+                            Search
+                        </button>
+                    </div>
+                    <div id="address-suggestions"
+                         class="hidden absolute z-[500] left-0 right-0 mt-1 bg-white rounded-2xl border border-sand shadow-xl max-h-48 overflow-y-auto divide-y divide-sand text-xs"></div>
+                </div>
+
+                <!-- Interactive Map Canvas -->
+                <div id="delivery-map" class="w-full h-56 rounded-2xl border border-sand overflow-hidden z-0"></div>
+                <p class="text-[11px] text-slatewarm">
+                    Drag the orange pin or tap anywhere on the map to set your exact drop-off spot.
+                    Coords: <span id="coords-display" class="font-mono text-forest">—</span>
+                </p>
+
+                <!-- Live Delivery Quote Banner -->
+                <div id="quote-box" class="rounded-2xl bg-linen/80 border border-sand p-4 space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-espresso" id="quote-provider">Drop your pin for live delivery fee</span>
+                        <span class="font-display text-base font-bold text-forest tabular-nums" id="quote-fee">—</span>
+                    </div>
+                    <div class="flex items-center justify-between text-slatewarm">
+                        <span id="quote-distance">Waiting for location pin...</span>
+                        <span id="quote-eta" class="font-semibold text-terracotta"></span>
+                    </div>
+                    <p id="quote-msg" class="text-[11px] text-slatewarm"></p>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label for="dropoffAddress" class="block text-xs font-semibold text-espresso mb-1">Full Street Address</label>
+                        <input id="dropoffAddress" type="text" required placeholder="House #, Street, Barangay, Barotac Nuevo, Iloilo"
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                    </div>
+                    <div>
+                        <label for="dropoffLandmark" class="block text-xs font-semibold text-espresso mb-1">Landmark / Rider Notes</label>
+                        <input id="dropoffLandmark" type="text" placeholder="e.g., Blue gate near plaza, call upon arrival"
+                               class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Contact & Payment -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-sand">
+                <div>
+                    <label for="custName" class="block text-xs font-semibold text-espresso mb-1">Your Name</label>
+                    <input id="custName" type="text" required placeholder="Juan Dela Cruz"
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-xs">
+                </div>
+                <div>
+                    <label for="custPhone" class="block text-xs font-semibold text-espresso mb-1">Mobile Number</label>
+                    <input id="custPhone" type="tel" required placeholder="0917 123 4567"
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-xs">
+                </div>
+                <div class="sm:col-span-2">
+                    <label for="paymentMode" class="block text-xs font-semibold text-espresso mb-1">Payment Method</label>
+                    <select id="paymentMode" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-xs">
+                        <option value="CASH_ON_DELIVERY">Cash on Delivery (COD)</option>
+                        <option value="PAID">Online Paid (GCash / Maya)</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <input id="orderNotes" type="text" placeholder="Optional food prep notes (e.g., no chili, extra garlic)..."
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                </div>
+            </div>
+
+            <!-- Live Order Totals -->
+            <div class="rounded-2xl bg-alabaster border border-sand p-4 space-y-1.5 text-sm">
+                <div class="flex justify-between text-slatewarm text-xs">
+                    <span>Food Subtotal</span>
+                    <span id="ord-subtotal" class="tabular-nums font-medium">₱0.00</span>
+                </div>
+                <div id="ord-delivery-row" class="flex justify-between text-slatewarm text-xs">
+                    <span>Delivery Fee</span>
+                    <span id="ord-delivery-fee" class="tabular-nums font-medium">₱0.00</span>
+                </div>
+                <div class="flex justify-between text-lg font-display font-bold text-espresso pt-2 border-t border-sand">
+                    <span>Total</span>
+                    <span id="ord-total" class="tabular-nums text-forest">₱0.00</span>
+                </div>
+            </div>
+
+            <button id="placeOrderBtn" type="button" onclick="placeOnlineOrder()"
+                    class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm shadow-sm transition-colors cursor-pointer">
+                Place Order &amp; Track Live
+            </button>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const STORE_LAT = /*[[${storeLat}]]*/ 10.8969;
+        const STORE_LNG = /*[[${storeLng}]]*/ 122.7022;
+        const STORE_ADDR = /*[[${storeAddress}]]*/ 'Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo';
+
+        const bag = new Map();
+        let fulfillment = 'DELIVERY';
+        let pinLat = STORE_LAT - 0.0045;
+        let pinLng = STORE_LNG + 0.0055;
+        let currentQuote = null;
+        let map, dropMarker, routeLine;
+
+        function fmtPhp(val) {
+            return '₱' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function initDeliveryMap() {
+            map = L.map('delivery-map').setView([STORE_LAT, STORE_LNG], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            // Store pickup marker
+            const storeIcon = L.divIcon({
+                className: '',
+                html: '<div style="background:#1F3A2E;color:#fff;font-weight:700;font-size:11px;padding:4px 8px;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">Ilonggo Bistro</div>',
+                iconSize: [100, 26],
+                iconAnchor: [50, 13]
+            });
+            L.marker([STORE_LAT, STORE_LNG], { icon: storeIcon }).addTo(map).bindPopup('<strong>Pickup:</strong> ' + STORE_ADDR);
+
+            // Draggable customer drop-off marker
+            dropMarker = L.marker([pinLat, pinLng], { draggable: true }).addTo(map);
+            routeLine = L.polyline([ [STORE_LAT, STORE_LNG], [pinLat, pinLng] ], {
+                color: '#B84A27', weight: 3, dashArray: '6, 8'
+            }).addTo(map);
+
+            dropMarker.on('dragend', () => {
+                const pos = dropMarker.getLatLng();
+                updateDropPin(pos.lat, pos.lng, true);
+            });
+            map.on('click', (e) => {
+                updateDropPin(e.latlng.lat, e.latlng.lng, true);
+            });
+
+            // Fetch initial live quote for default Barotac Nuevo pin
+            updateDropPin(pinLat, pinLng, false);
+        }
+
+        async function updateDropPin(lat, lng, reverseGeocode) {
+            pinLat = Number(lat);
+            pinLng = Number(lng);
+            dropMarker.setLatLng([pinLat, pinLng]);
+            routeLine.setLatLngs([ [STORE_LAT, STORE_LNG], [pinLat, pinLng] ]);
+            document.getElementById('coords-display').textContent = pinLat.toFixed(5) + ', ' + pinLng.toFixed(5);
+
+            await fetchLiveQuote(pinLat, pinLng);
+
+            if (reverseGeocode) {
+                try {
+                    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${pinLat}&lon=${pinLng}`);
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.display_name) {
+                            document.getElementById('dropoffAddress').value = data.display_name;
+                        }
+                    }
+                } catch (_) { /* keep user typed address */ }
+            }
+        }
+
+        async function fetchLiveQuote(lat, lng) {
+            document.getElementById('quote-provider').textContent = 'Calculating live delivery quote...';
+            try {
+                const res = await fetch('/api/delivery/quote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerLat: lat, customerLng: lng })
+                });
+                const quote = await res.json();
+                currentQuote = quote;
+                document.getElementById('quote-provider').textContent = quote.providerLabel;
+                document.getElementById('quote-fee').textContent = quote.deliverable ? quote.formattedFee : 'Unavailable';
+                document.getElementById('quote-distance').textContent = quote.distanceKm.toFixed(2) + ' km from Ilonggo Bistro';
+                document.getElementById('quote-eta').textContent = quote.deliverable ? ('ETA ' + quote.etaRange) : 'Out of range';
+                document.getElementById('quote-msg').textContent = quote.message || '';
+                recalcOrderTotals();
+            } catch (err) {
+                document.getElementById('quote-provider').textContent = 'Could not fetch quote — try moving the pin';
+            }
+        }
+
+        async function searchAddress() {
+            const q = document.getElementById('address-search-input').value.trim();
+            if (!q) return;
+            const box = document.getElementById('address-suggestions');
+            box.innerHTML = '<div class="p-3 text-slatewarm">Searching Iloilo addresses...</div>';
+            box.classList.remove('hidden');
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ph&limit=5&q=${encodeURIComponent(q + ', Iloilo')}`;
+                const res = await fetch(url);
+                const list = await res.json();
+                if (!list.length) {
+                    box.innerHTML = '<div class="p-3 text-slatewarm">No matches found — drag the map pin directly to your location.</div>';
+                    return;
+                }
+                box.innerHTML = '';
+                list.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-full text-left p-3 hover:bg-alabaster cursor-pointer block';
+                    btn.textContent = item.display_name;
+                    btn.onclick = () => {
+                        box.classList.add('hidden');
+                        document.getElementById('dropoffAddress').value = item.display_name;
+                        const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+                        map.setView([lat, lon], 16);
+                        updateDropPin(lat, lon, false);
+                    };
+                    box.appendChild(btn);
+                });
+            } catch (_) {
+                box.innerHTML = '<div class="p-3 text-slatewarm">Address lookup offline — drag the pin directly on the map.</div>';
+            }
+        }
+
+        function useMyLocation() {
+            if (!navigator.geolocation) {
+                showOrderError('GPS is not supported by this browser. Please tap or drag the map pin.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+                    updateDropPin(pos.coords.latitude, pos.coords.longitude, true);
+                },
+                () => showOrderError('Could not read GPS location. Please tap or drag the map pin.')
+            );
+        }
+
+        function setFulfillment(mode) {
+            fulfillment = mode;
+            const isDel = mode === 'DELIVERY';
+            document.getElementById('delivery-map-section').classList.toggle('hidden', !isDel);
+            document.getElementById('ord-delivery-row').classList.toggle('hidden', !isDel);
+            const delBtn = document.getElementById('btn-mode-delivery');
+            const pickBtn = document.getElementById('btn-mode-pickup');
+            if (isDel) {
+                delBtn.className = 'py-2.5 rounded-xl text-xs font-bold bg-forest text-white shadow-xs transition-all cursor-pointer';
+                pickBtn.className = 'py-2.5 rounded-xl text-xs font-bold text-espresso hover:bg-white/60 transition-all cursor-pointer';
+                setTimeout(() => map && map.invalidateSize(), 80);
+            } else {
+                pickBtn.className = 'py-2.5 rounded-xl text-xs font-bold bg-forest text-white shadow-xs transition-all cursor-pointer';
+                delBtn.className = 'py-2.5 rounded-xl text-xs font-bold text-espresso hover:bg-white/60 transition-all cursor-pointer';
+            }
+            recalcOrderTotals();
+        }
+
+        function filterOrderCat(btn) {
+            const cat = btn.dataset.cat;
+            document.querySelectorAll('.ord-cat-btn').forEach(b => {
+                b.className = 'ord-cat-btn px-4 py-2 rounded-full text-xs font-semibold border bg-white text-espresso border-sand hover:border-forest cursor-pointer';
+            });
+            btn.className = 'ord-cat-btn px-4 py-2 rounded-full text-xs font-semibold border bg-forest text-white border-forest cursor-pointer';
+            document.querySelectorAll('.ord-dish-card').forEach(c => {
+                c.classList.toggle('hidden', !(cat === 'all' || c.dataset.cat === cat));
+            });
+        }
+
+        function addOrderItem(btn) {
+            const id = Number(btn.dataset.id);
+            const cur = bag.get(id);
+            if (cur) cur.qty += 1;
+            else bag.set(id, { id, name: btn.dataset.name, price: parseFloat(btn.dataset.price), qty: 1 });
+            renderOrderBag();
+        }
+
+        function stepOrderItem(id, delta) {
+            const cur = bag.get(id);
+            if (!cur) return;
+            cur.qty += delta;
+            if (cur.qty <= 0) bag.delete(id);
+            renderOrderBag();
+        }
+
+        function clearOrderBag() {
+            bag.clear();
+            renderOrderBag();
+        }
+
+        function renderOrderBag() {
+            document.querySelectorAll('[id^="ord-badge-"]').forEach(el => el.classList.add('hidden'));
+            const container = document.getElementById('order-bag-lines');
+            if (!bag.size) {
+                container.innerHTML = '<p class="py-6 text-center text-xs text-slatewarm">Tap + Add on any dish to begin your order.</p>';
+                recalcOrderTotals();
+                return;
+            }
+            let html = '';
+            bag.forEach(item => {
+                const badge = document.getElementById('ord-badge-' + item.id);
+                if (badge) { badge.textContent = item.qty + ' in bag'; badge.classList.remove('hidden'); }
+                html += `<div class="py-2 flex items-center justify-between gap-2 text-xs">
+                    <div class="min-w-0 flex-1 font-semibold text-espresso truncate">${item.name}</div>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="stepOrderItem(${item.id}, -1)" class="w-6 h-6 rounded bg-linen font-bold cursor-pointer">−</button>
+                        <span class="w-5 text-center tabular-nums font-bold">${item.qty}</span>
+                        <button type="button" onclick="stepOrderItem(${item.id}, 1)" class="w-6 h-6 rounded bg-linen font-bold cursor-pointer">+</button>
+                    </div>
+                    <div class="w-16 text-right tabular-nums font-semibold text-forest">${fmtPhp(item.price * item.qty)}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            recalcOrderTotals();
+        }
+
+        function recalcOrderTotals() {
+            let sub = 0;
+            bag.forEach(i => sub += i.price * i.qty);
+            const delFee = (fulfillment === 'DELIVERY' && currentQuote && currentQuote.deliverable)
+                ? Number(currentQuote.deliveryFeePhp || 0) : 0;
+            document.getElementById('ord-subtotal').textContent = fmtPhp(sub);
+            document.getElementById('ord-delivery-fee').textContent = fmtPhp(delFee);
+            document.getElementById('ord-total').textContent = fmtPhp(sub + delFee);
+        }
+
+        function showOrderError(msg) {
+            const box = document.getElementById('order-error');
+            box.textContent = msg;
+            box.classList.remove('hidden');
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        async function placeOnlineOrder() {
+            document.getElementById('order-error').classList.add('hidden');
+            if (!bag.size) return showOrderError('Please add at least one dish to your order.');
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            if (!name || !phone) return showOrderError('Please enter your name and mobile number.');
+            const address = document.getElementById('dropoffAddress').value.trim();
+            if (fulfillment === 'DELIVERY') {
+                if (!address) return showOrderError('Please enter your full street address.');
+                if (currentQuote && !currentQuote.deliverable) return showOrderError(currentQuote.message);
+            }
+
+            const btn = document.getElementById('placeOrderBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting Order...';
+
+            const payload = {
+                customerName: name,
+                customerPhone: phone,
+                fulfillmentType: fulfillment,
+                paymentMode: document.getElementById('paymentMode').value,
+                customerLat: fulfillment === 'DELIVERY' ? pinLat : null,
+                customerLng: fulfillment === 'DELIVERY' ? pinLng : null,
+                dropoffAddress: fulfillment === 'DELIVERY' ? address : null,
+                dropoffLandmark: document.getElementById('dropoffLandmark').value.trim(),
+                notes: document.getElementById('orderNotes').value.trim(),
+                items: Array.from(bag.values()).map(i => ({ menuItemId: i.id, quantity: i.qty }))
+            };
+
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+            try {
+                const res = await fetch('/order/checkout', { method: 'POST', headers, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (!res.ok) {
+                    showOrderError(data.error || 'Could not place order.');
+                    btn.disabled = false;
+                    btn.textContent = 'Place Order & Track Live';
+                    return;
+                }
+                window.location.href = data.redirectUrl;
+            } catch (_) {
+                showOrderError('Network error placing order. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Place Order & Track Live';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initDeliveryMap);
+    </script>
+</section>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Reservations Queue', ~{::section})}">
+<section class="space-y-6">
+    <!-- Status Filter Pills -->
+    <div class="flex flex-wrap gap-2">
+        <a th:href="@{/admin/reservations(status='ALL')}"
+           th:classappend="${activeStatus == 'ALL'} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+           class="px-4 py-2 rounded-full text-xs font-semibold border">All</a>
+        <a th:each="st : ${statuses}"
+           th:href="@{/admin/reservations(status=${st.name()})}"
+           th:classappend="${activeStatus == st.name()} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+           class="px-4 py-2 rounded-full text-xs font-semibold border"
+           th:text="${st.label}">Pending</a>
+    </div>
+
+    <div class="bg-white rounded-3xl border border-sand overflow-hidden">
+        <div th:if="${#lists.isEmpty(reservations)}" class="p-10 text-center text-sm text-slatewarm">
+            No reservations found for this filter.
+        </div>
+        <div th:if="${!#lists.isEmpty(reservations)}" class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-alabaster text-xs uppercase tracking-wider text-slatewarm">
+                <tr>
+                    <th class="px-5 py-3">Booking</th>
+                    <th class="px-5 py-3">Guest &amp; Notes</th>
+                    <th class="px-5 py-3">Seating</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3 text-right">Update</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-sand">
+                <th:block th:each="res : ${reservations}">
+                    <tr th:replace="~{admin/fragments/reservation-row :: row(res=${res}, statuses=${statuses})}"></tr>
+                </th:block>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</html>

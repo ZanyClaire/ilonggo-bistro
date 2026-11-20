@@ -1,0 +1,12 @@
+{
+  "name": "ilonggo-bistro-assets",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i src/main/resources/static/css/input.css -o src/main/resources/static/css/app.css --minify",
+    "css:watch": "tailwindcss -i src/main/resources/static/css/input.css -o src/main/resources/static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

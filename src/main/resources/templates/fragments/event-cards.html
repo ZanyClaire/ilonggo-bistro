@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="grid" id="events-grid-container">
+    <div th:if="${#lists.isEmpty(events)}"
+         class="rounded-3xl bg-white border border-sand p-12 text-center space-y-2">
+        <p class="font-display text-2xl text-espresso">No event albums in this category yet</p>
+        <p class="text-sm text-slatewarm">Check back soon or browse all our Ilonggo Bistro events.</p>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(events)}"
+         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+        <a th:each="ev : ${events}"
+           th:href="@{/events/{slug}(slug=${ev.slug})}"
+           class="group bg-white rounded-3xl border border-sand overflow-hidden shadow-xs hover:shadow-md hover:border-terracotta/40 transition-all flex flex-col">
+            <div class="relative aspect-[16/10] bg-linen overflow-hidden">
+                <img th:src="${ev.effectiveCoverUrl()}" th:alt="${ev.title}" loading="lazy"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                <div class="absolute top-3 left-3 flex flex-wrap gap-2">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider bg-forest/90 text-alabaster px-3 py-1 rounded-full"
+                          th:text="${ev.eventType}">Awards Night</span>
+                </div>
+                <span class="absolute bottom-3 right-3 text-xs font-semibold bg-espresso/85 text-white px-3 py-1 rounded-full tabular-nums"
+                      th:text="${ev.approvedPhotoCount()} + ' photo' + (${ev.approvedPhotoCount() == 1} ? '' : 's')">3 photos</span>
+            </div>
+
+            <div class="p-6 flex-1 flex flex-col justify-between gap-4">
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold text-terracotta" th:text="${ev.formattedDate()}">November 1, 2026</p>
+                    <h2 class="font-display text-2xl font-semibold text-espresso leading-snug group-hover:text-terracotta transition-colors"
+                        th:text="${ev.title}">Event Title</h2>
+                    <p class="text-xs text-slatewarm font-medium" th:text="${ev.location}">Location</p>
+                    <p class="text-sm text-slatewarm leading-relaxed line-clamp-3 pt-1" th:text="${ev.description}">Description</p>
+                </div>
+                <div class="pt-4 border-t border-sand/70 flex items-center justify-between text-xs font-semibold">
+                    <span class="text-forest">Open Photo Album →</span>
+                    <span th:if="${ev.allowGuestUploads}" class="text-terracotta">Guest Uploads Open</span>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+</body>
+</html>

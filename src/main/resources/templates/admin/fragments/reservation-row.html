@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<table>
+    <tbody>
+    <tr th:fragment="row" th:id="'res-row-' + ${res.id}" class="hover:bg-alabaster/60">
+        <td class="px-5 py-4">
+            <div class="font-mono text-xs font-bold text-forest" th:text="${res.referenceCode}">IB-2026-BN01</div>
+            <div class="text-xs text-slatewarm mt-0.5 tabular-nums" th:text="${res.formattedDate()} + ' · ' + ${res.formattedTime()}">Date</div>
+        </td>
+        <td class="px-5 py-4">
+            <div class="font-semibold text-espresso" th:text="${res.guestName}">Guest</div>
+            <div class="text-xs text-slatewarm" th:text="${res.phone}">Phone</div>
+            <div th:if="${res.specialRequests != null}" class="text-xs text-terracotta mt-1" th:text="'Note: ' + ${res.specialRequests}">Note</div>
+        </td>
+        <td class="px-5 py-4">
+            <div class="font-semibold text-espresso" th:text="${res.partySize} + ' guests'">4 guests</div>
+            <div class="text-xs text-slatewarm" th:text="${res.seatingPreference}">Main Dining</div>
+        </td>
+        <td class="px-5 py-4">
+            <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full border"
+                  th:classappend="${res.status.name() == 'CONFIRMED'} ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                    : (${res.status.name() == 'PENDING'} ? 'bg-amber-100 text-amber-900 border-amber-200'
+                    : (${res.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-900 border-red-200'
+                    : 'bg-linen text-espresso border-sand'))"
+                  th:text="${res.status.label}">Pending</span>
+        </td>
+        <td class="px-5 py-4 text-right">
+            <form th:attr="hx-post=@{/admin/reservations/{id}/status(id=${res.id})}"
+                  th:attrappend="hx-target='#res-row-' + ${res.id}"
+                  hx-swap="outerHTML"
+                  class="inline-flex items-center gap-2">
+                <select name="status" class="rounded-xl bg-alabaster border border-sand px-2.5 py-1.5 text-xs">
+                    <option th:each="st : ${statuses}"
+                            th:value="${st.name()}"
+                            th:selected="${st == res.status}"
+                            th:text="${st.label}">Status</option>
+                </select>
+                <button type="submit"
+                        class="rounded-xl bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-3 py-1.5 cursor-pointer">
+                    Update
+                </button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

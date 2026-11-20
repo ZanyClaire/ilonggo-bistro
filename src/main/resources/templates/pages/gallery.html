@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Gallery & Vibe', 'Photos of food, coffee, warm interior vibe, and gatherings at Ilonggo Bistro in Barotac Nuevo, Iloilo.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-8">
+        <div class="max-w-2xl space-y-3">
+            <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Photos & Atmosphere</p>
+            <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">Food, drink &amp; our Barotac Nuevo vibe</h1>
+            <p class="text-slatewarm text-sm sm:text-base leading-relaxed">
+                A glimpse into our sunlit mornings, heirloom dishes, and warm evening tables. Click any photo to view full size.
+            </p>
+        </div>
+        <a th:href="@{/events}"
+           class="inline-flex items-center justify-center rounded-full bg-forest hover:bg-forest-soft text-white text-sm font-semibold px-6 py-3 shadow-xs">
+            Event Photo Albums &amp; Uploads →
+        </a>
+    </div>
+
+    <!-- Category Filter Tabs (HTMX) -->
+    <div class="flex flex-wrap gap-2 pb-8">
+        <button type="button"
+                hx-get="/gallery/fragment?category=All"
+                hx-target="#gallery-grid-container"
+                hx-swap="outerHTML"
+                onclick="setActiveGalleryTab(this)"
+                th:classappend="${activeCategory == 'All'} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+                class="gallery-tab px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors cursor-pointer">
+            All Photos
+        </button>
+        <button th:each="cat : ${categories}"
+                type="button"
+                th:attr="hx-get=@{/gallery/fragment(category=${cat})}"
+                hx-target="#gallery-grid-container"
+                hx-swap="outerHTML"
+                onclick="setActiveGalleryTab(this)"
+                th:classappend="${activeCategory == cat} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+                class="gallery-tab px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors cursor-pointer"
+                th:text="${cat}">Category</button>
+    </div>
+
+    <div th:replace="~{fragments/gallery-grid :: grid}"></div>
+
+    <!-- Lightbox Modal -->
+    <div id="gallery-lightbox"
+         onclick="if(event.target === this) closeLightbox()"
+         class="hidden fixed inset-0 z-50 bg-espresso/90 backdrop-blur-xs p-4 sm:p-8 flex items-center justify-center">
+        <div class="max-w-4xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl">
+            <div class="relative bg-espresso">
+                <img id="lightbox-img" src="" alt="" class="w-full max-h-[70vh] object-contain mx-auto">
+                <button type="button" onclick="closeLightbox()"
+                        class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 text-espresso font-bold text-lg hover:bg-white cursor-pointer">
+                    ×
+                </button>
+            </div>
+            <div class="p-6">
+                <h3 id="lightbox-title" class="font-display text-2xl font-semibold text-espresso"></h3>
+                <p id="lightbox-caption" class="text-sm text-slatewarm mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openLightbox(src, title, caption) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox-img').alt = title;
+            document.getElementById('lightbox-title').textContent = title;
+            document.getElementById('lightbox-caption').textContent = caption || '';
+            document.getElementById('gallery-lightbox').classList.remove('hidden');
+        }
+        function closeLightbox() {
+            document.getElementById('gallery-lightbox').classList.add('hidden');
+        }
+        function setActiveGalleryTab(btn) {
+            document.querySelectorAll('.gallery-tab').forEach(el => {
+                el.classList.remove('bg-forest', 'text-white', 'border-forest');
+                el.classList.add('bg-white', 'text-espresso', 'border-sand');
+            });
+            btn.classList.remove('bg-white', 'text-espresso', 'border-sand');
+            btn.classList.add('bg-forest', 'text-white', 'border-forest');
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+    </script>
+</section>
+</html>

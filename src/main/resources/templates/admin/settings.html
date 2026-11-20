@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Store Profile & Hours', ~{::section})}">
+<section class="max-w-4xl bg-white rounded-3xl border border-sand p-8 space-y-6">
+    <div>
+        <h2 class="font-display text-2xl font-semibold text-espresso">Bistro Profile Settings</h2>
+        <p class="text-xs text-slatewarm mt-1">Updates apply immediately across the live website, status badge, and reservation slots.</p>
+    </div>
+
+    <form th:action="@{/admin/settings}" method="post" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+            <label class="block text-xs font-semibold mb-1">Bistro Name</label>
+            <input type="text" name="bistroName" th:value="${profile.bistroName()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Tagline</label>
+            <input type="text" name="tagline" th:value="${profile.tagline()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold mb-1">Street Address</label>
+            <input type="text" name="addressLine" th:value="${profile.addressLine()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Google Plus Code</label>
+            <input type="text" name="plusCode" th:value="${profile.plusCode()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Phone Number</label>
+            <input type="text" name="phoneNumber" th:value="${profile.phoneNumber()}"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Opening Time (HH:mm)</label>
+            <input type="time" name="openTime" th:value="${#temporals.format(profile.openTime(), 'HH:mm')}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Closing Time (HH:mm)</label>
+            <input type="time" name="closeTime" th:value="${#temporals.format(profile.closeTime(), 'HH:mm')}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Contact Email</label>
+            <input type="email" name="email" th:value="${profile.email()}"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Max Online Party Size</label>
+            <input type="number" min="2" max="100" name="maxPartySize" th:value="${profile.maxPartySize()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Hourly Dining Capacity (Seats)</label>
+            <input type="number" min="5" max="500" name="hourlySeatCapacity" th:value="${profile.hourlySeatCapacity()}" required
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Facebook Page URL</label>
+            <input type="url" name="facebookUrl" th:value="${profile.facebookUrl()}"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold mb-1">Messenger Link (m.me/...)</label>
+            <input type="url" name="messengerUrl" th:value="${profile.messengerUrl()}"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+        <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold mb-1">Top Announcement Banner (leave blank to hide)</label>
+            <input type="text" name="announcementBanner" th:value="${profile.announcementBanner()}"
+                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+        </div>
+
+        <div class="sm:col-span-2 pt-2">
+            <button type="submit"
+                    class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold px-7 py-3 cursor-pointer">
+                Save Store Settings
+            </button>
+        </div>
+    </form>
+</section>
+</html>

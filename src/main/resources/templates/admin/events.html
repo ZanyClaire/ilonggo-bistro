@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Business Events & Albums', ~{::section})}">
+<section class="space-y-8">
+    <!-- Pending Guest Moderation Alert -->
+    <div th:if="${pendingCount > 0}"
+         class="rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm font-medium text-amber-950">
+            <strong th:text="${pendingCount}">0</strong> guest-uploaded event photo(s) are waiting for your approval. Open an event album below to review.
+        </p>
+    </div>
+
+    <!-- Create New Business Event + Initial Multi-Photo Upload -->
+    <div class="bg-white rounded-3xl border border-sand p-6 space-y-5">
+        <div>
+            <h2 class="font-display text-xl font-semibold text-espresso">Create New Business Event</h2>
+            <p class="text-xs text-slatewarm mt-0.5">Add an Awards Night, Dining Event, or Catering showcase and optionally batch-upload multiple photos right away.</p>
+        </div>
+
+        <form th:action="@{/admin/events}" th:object="${eventForm}" method="post" enctype="multipart/form-data"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-semibold text-espresso mb-1">Event Title</label>
+                <input type="text" th:field="*{title}" required placeholder="e.g., Iloilo Culinary Awards Night 2026"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                <p th:if="${#fields.hasErrors('title')}" th:errors="*{title}" class="text-xs text-red-700 mt-1"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Event Type</label>
+                <select th:field="*{eventType}" class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+                    <option th:each="type : ${eventTypes}" th:value="${type}" th:text="${type}">Awards Night</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-espresso mb-1">Event Date</label>
+                <input type="date" th:field="*{eventDate}" required
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-semibold text-espresso mb-1">Venue / Location</label>
+                <input type="text" th:field="*{location}" required
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-sm">
+            </div>
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-semibold text-espresso mb-1">Initial Event Photos (Select Multiple — up to <span th:text="${maxBatch}">20</span>)</label>
+                <input type="file" name="files" multiple accept="image/jpeg,image/png,image/webp"
+                       onchange="previewCreateBatch(this.files)"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+                <p id="create-batch-label" class="text-[11px] text-slatewarm mt-1">Hold Ctrl/Shift or select multiple photos on mobile</p>
+            </div>
+            <div class="lg:col-span-4">
+                <label class="block text-xs font-semibold text-espresso mb-1">Event Story / Description</label>
+                <textarea th:field="*{description}" rows="2" placeholder="Describe the occasion, highlights, and menu served..."
+                          class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm"></textarea>
+            </div>
+            <div id="create-batch-preview" class="hidden lg:col-span-4 grid grid-cols-4 sm:grid-cols-8 gap-2"></div>
+            <div class="lg:col-span-4 flex flex-wrap items-center justify-between gap-4 pt-1">
+                <div class="flex flex-wrap items-center gap-6 text-xs font-medium">
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" th:field="*{allowGuestUploads}" class="accent-terracotta"> Allow guests to upload photos to this event
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" th:field="*{published}" class="accent-terracotta"> Publish on public Events page
+                    </label>
+                </div>
+                <button type="submit"
+                        class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-6 py-3 cursor-pointer">
+                    + Create Event &amp; Upload Photos
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- All Events List -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div th:each="ev : ${events}" class="bg-white rounded-3xl border border-sand overflow-hidden flex flex-col">
+            <div class="relative aspect-[16/10] bg-linen overflow-hidden">
+                <img th:src="${ev.effectiveCoverUrl()}" th:alt="${ev.title}" class="w-full h-full object-cover">
+                <span class="absolute top-3 left-3 text-[11px] font-semibold bg-forest/90 text-white px-3 py-1 rounded-full"
+                      th:text="${ev.eventType}">Awards Night</span>
+                <span th:if="${ev.pendingPhotoCount() > 0}"
+                      class="absolute top-3 right-3 text-[11px] font-bold bg-amber-500 text-white px-2.5 py-1 rounded-full"
+                      th:text="${ev.pendingPhotoCount()} + ' pending'">1 pending</span>
+            </div>
+            <div class="p-5 flex-1 flex flex-col justify-between gap-4">
+                <div class="space-y-1">
+                    <p class="text-xs font-semibold text-terracotta" th:text="${ev.formattedDate()}">Date</p>
+                    <h3 class="font-display text-xl font-semibold text-espresso leading-snug" th:text="${ev.title}">Title</h3>
+                    <p class="text-xs text-slatewarm" th:text="${ev.location}">Location</p>
+                    <div class="flex flex-wrap gap-2 pt-2 text-[11px] font-semibold">
+                        <span class="px-2.5 py-0.5 rounded-full bg-linen text-espresso tabular-nums"
+                              th:text="${ev.approvedPhotoCount()} + ' live photo(s)'">3 photos</span>
+                        <span th:if="${ev.allowGuestUploads}" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900">Guest Uploads On</span>
+                        <span th:if="${!ev.published}" class="px-2.5 py-0.5 rounded-full bg-sand text-slatewarm">Draft</span>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-sand flex items-center justify-between gap-2">
+                    <a th:href="@{/admin/events/{id}(id=${ev.id})}"
+                       class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-4 py-2">
+                        Upload &amp; Manage Photos
+                    </a>
+                    <a th:if="${ev.published}" th:href="@{/events/{slug}(slug=${ev.slug})}" target="_blank"
+                       class="text-xs font-semibold text-terracotta hover:underline">Public View ↗</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function previewCreateBatch(fileList) {
+            const files = Array.from(fileList || []);
+            const box = document.getElementById('create-batch-preview');
+            const label = document.getElementById('create-batch-label');
+            box.innerHTML = '';
+            if (!files.length) { box.classList.add('hidden'); return; }
+            label.textContent = files.length + ' photo(s) queued for upload';
+            box.classList.remove('hidden');
+            files.slice(0, 16).forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'aspect-square rounded-xl overflow-hidden border border-sand';
+                div.innerHTML = `<img src="${URL.createObjectURL(f)}" class="w-full h-full object-cover">`;
+                box.appendChild(div);
+            });
+        }
+    </script>
+</section>
+</html>

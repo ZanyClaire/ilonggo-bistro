@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page(${event.title}, 'Event photo album at Ilonggo Bistro in Barotac Nuevo, Iloilo.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 space-y-12">
+    <!-- Breadcrumb -->
+    <div>
+        <a th:href="@{/events}" class="text-xs font-semibold uppercase tracking-wider text-slatewarm hover:text-terracotta">
+            ← Back to All Events
+        </a>
+    </div>
+
+    <!-- Event Banner Card -->
+    <div class="bg-forest text-white rounded-[2rem] overflow-hidden grid grid-cols-1 lg:grid-cols-12 shadow-lg">
+        <div class="lg:col-span-5 aspect-[4/3] lg:aspect-auto relative bg-espresso">
+            <img th:src="${event.effectiveCoverUrl()}" th:alt="${event.title}" class="w-full h-full object-cover">
+        </div>
+        <div class="lg:col-span-7 p-8 sm:p-10 lg:p-12 flex flex-col justify-center space-y-4">
+            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span class="px-3 py-1 rounded-full bg-terracotta text-white uppercase tracking-wider" th:text="${event.eventType}">Awards Night</span>
+                <span class="px-3 py-1 rounded-full bg-white/15 text-alabaster" th:text="${event.formattedDate()}">Date</span>
+                <span class="px-3 py-1 rounded-full bg-white/15 text-calamansi tabular-nums"
+                      th:text="${#lists.size(approvedPhotos)} + ' photo' + (${#lists.size(approvedPhotos) == 1} ? '' : 's')">0 photos</span>
+            </div>
+            <h1 class="font-display text-3xl sm:text-4xl font-semibold text-white leading-tight" th:text="${event.title}">Event Title</h1>
+            <p class="text-sm font-medium text-calamansi" th:text="${event.location}">Location</p>
+            <p class="text-sm sm:text-base text-alabaster/85 leading-relaxed" th:text="${event.description}">Description</p>
+            <div class="pt-2 flex flex-wrap gap-3">
+                <a th:if="${event.allowGuestUploads}" href="#guest-upload"
+                   class="inline-flex items-center justify-center rounded-full bg-white hover:bg-alabaster text-espresso text-xs sm:text-sm font-semibold px-6 py-3">
+                    + Upload Your Event Photos
+                </a>
+                <a th:href="@{/reservations}"
+                   class="inline-flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-semibold px-5 py-3">
+                    Reserve a Table
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Event Photo Grid -->
+    <div class="space-y-5">
+        <div class="flex items-center justify-between">
+            <h2 class="font-display text-2xl sm:text-3xl font-semibold text-espresso">Event Album</h2>
+            <span class="text-xs text-slatewarm">Tap any photo to zoom</span>
+        </div>
+
+        <div th:if="${#lists.isEmpty(approvedPhotos)}"
+             class="rounded-3xl bg-white border border-sand p-12 text-center text-sm text-slatewarm">
+            No published photos in this album yet. Be the first to share your photos below!
+        </div>
+
+        <div th:if="${!#lists.isEmpty(approvedPhotos)}"
+             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <figure th:each="photo, stat : ${approvedPhotos}"
+                    th:data-index="${stat.index}"
+                    th:data-src="${photo.imageUrl}"
+                    th:data-caption="${photo.caption != null ? photo.caption : ''}"
+                    th:data-by="${photo.uploadedBy}"
+                    onclick="openEventLightbox(Number(this.dataset.index))"
+                    class="event-photo-tile group cursor-pointer bg-white rounded-3xl border border-sand overflow-hidden shadow-xs hover:shadow-md transition-all">
+                <div class="aspect-[4/3] bg-linen overflow-hidden relative">
+                    <img th:src="${photo.imageUrl}" th:alt="${photo.caption ?: event.title}" loading="lazy"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <span th:if="${photo.uploaderRole == 'GUEST'}"
+                          class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider bg-white/90 text-forest px-2.5 py-1 rounded-full">
+                        Guest Shot
+                    </span>
+                </div>
+                <figcaption class="p-4 space-y-1">
+                    <p th:if="${photo.caption != null and !photo.caption.isBlank()}"
+                       class="text-sm text-espresso leading-snug" th:text="${photo.caption}">Caption</p>
+                    <p class="text-[11px] text-slatewarm">
+                        Shared by <strong class="text-espresso" th:text="${photo.uploadedBy}">Team</strong>
+                    </p>
+                </figcaption>
+            </figure>
+        </div>
+    </div>
+
+    <!-- Guest Multi-Photo Upload Box (Web & Mobile Friendly) -->
+    <div id="guest-upload" th:if="${event.allowGuestUploads}"
+         class="bg-white rounded-[2rem] border border-sand p-6 sm:p-10 shadow-xs space-y-6">
+        <div class="max-w-2xl space-y-2">
+            <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Attendee Photo Sharing</p>
+            <h2 class="font-display text-2xl sm:text-3xl font-semibold text-espresso">Share your photos from this event</h2>
+            <p class="text-sm text-slatewarm">
+                Select or drop up to <strong th:text="${maxBatch}">20</strong> photos at once (JPG, PNG, or WEBP, up to 8 MB each).
+                Submitted photos appear in the album right after quick review by our team.
+            </p>
+        </div>
+
+        <div th:if="${uploadSuccess}" class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-900 font-medium"
+             th:text="${uploadSuccess}">Uploaded!</div>
+        <div th:if="${uploadError}" class="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-900 font-medium"
+             th:text="${uploadError}">Error</div>
+
+        <form th:action="@{/events/{slug}/upload(slug=${event.slug})}" method="post" enctype="multipart/form-data" class="space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="guestName" class="block text-sm font-semibold text-espresso mb-1.5">Your Name</label>
+                    <input id="guestName" name="guestName" type="text" required placeholder="e.g., Ana Morales"
+                           class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                </div>
+                <div>
+                    <label for="caption" class="block text-sm font-semibold text-espresso mb-1.5">Caption for This Batch (Optional)</label>
+                    <input id="caption" name="caption" type="text" maxlength="255" placeholder="Table moments, award winners, dinner spread..."
+                           class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                </div>
+            </div>
+
+            <!-- Drag-and-Drop Multi-File Dropzone -->
+            <div id="guest-dropzone"
+                 onclick="document.getElementById('guest-files-input').click()"
+                 class="border-2 border-dashed border-sand hover:border-terracotta rounded-3xl bg-alabaster p-8 text-center cursor-pointer transition-colors space-y-2">
+                <input id="guest-files-input" name="files" type="file" multiple required
+                       accept="image/jpeg,image/png,image/webp"
+                       onchange="renderMultiPreview(this.files, 'guest-preview-grid', 'guest-file-summary')"
+                       class="hidden">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-linen text-terracotta flex items-center justify-center font-display text-2xl font-bold">+</div>
+                <p class="font-semibold text-sm text-espresso">Tap to choose multiple photos or drag &amp; drop here</p>
+                <p id="guest-file-summary" class="text-xs text-slatewarm">Supports multiple JPG, PNG, or WEBP images at once</p>
+            </div>
+
+            <div id="guest-preview-grid" class="hidden grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-3"></div>
+
+            <button type="submit"
+                    class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-7 py-3.5 text-sm shadow-xs transition-colors cursor-pointer">
+                Upload Selected Photos
+            </button>
+        </form>
+    </div>
+
+    <!-- Lightbox Modal with Prev / Next -->
+    <div id="event-lightbox"
+         onclick="if(event.target === this) closeEventLightbox()"
+         class="hidden fixed inset-0 z-50 bg-espresso/92 backdrop-blur-xs p-4 sm:p-8 flex items-center justify-center">
+        <div class="max-w-4xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl">
+            <div class="relative bg-espresso flex items-center justify-center">
+                <button type="button" onclick="stepEventLightbox(-1)" aria-label="Previous photo"
+                        class="absolute left-3 z-10 w-10 h-10 rounded-full bg-white/90 text-espresso font-bold text-lg hover:bg-white cursor-pointer">‹</button>
+                <img id="ev-lb-img" src="" alt="" class="w-full max-h-[72vh] object-contain mx-auto">
+                <button type="button" onclick="stepEventLightbox(1)" aria-label="Next photo"
+                        class="absolute right-14 z-10 w-10 h-10 rounded-full bg-white/90 text-espresso font-bold text-lg hover:bg-white cursor-pointer">›</button>
+                <button type="button" onclick="closeEventLightbox()" aria-label="Close"
+                        class="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white/90 text-espresso font-bold text-lg hover:bg-white cursor-pointer">×</button>
+            </div>
+            <div class="p-5 flex items-center justify-between gap-4">
+                <div>
+                    <p id="ev-lb-caption" class="text-sm font-medium text-espresso"></p>
+                    <p id="ev-lb-by" class="text-xs text-slatewarm mt-0.5"></p>
+                </div>
+                <span id="ev-lb-counter" class="text-xs font-mono text-slatewarm whitespace-nowrap"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lbIndex = 0;
+        function getTiles() { return Array.from(document.querySelectorAll('.event-photo-tile')); }
+        function openEventLightbox(idx) {
+            const tiles = getTiles();
+            if (!tiles.length) return;
+            lbIndex = (idx + tiles.length) % tiles.length;
+            const tile = tiles[lbIndex];
+            document.getElementById('ev-lb-img').src = tile.dataset.src;
+            document.getElementById('ev-lb-caption').textContent = tile.dataset.caption || 'Event Moment';
+            document.getElementById('ev-lb-by').textContent = 'Shared by ' + (tile.dataset.by || 'Ilonggo Bistro');
+            document.getElementById('ev-lb-counter').textContent = (lbIndex + 1) + ' / ' + tiles.length;
+            document.getElementById('event-lightbox').classList.remove('hidden');
+        }
+        function stepEventLightbox(delta) { openEventLightbox(lbIndex + delta); }
+        function closeEventLightbox() { document.getElementById('event-lightbox').classList.add('hidden'); }
+        document.addEventListener('keydown', e => {
+            if (document.getElementById('event-lightbox').classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeEventLightbox();
+            if (e.key === 'ArrowRight') stepEventLightbox(1);
+            if (e.key === 'ArrowLeft') stepEventLightbox(-1);
+        });
+
+        function renderMultiPreview(fileList, gridId, summaryId) {
+            const grid = document.getElementById(gridId);
+            const summary = document.getElementById(summaryId);
+            grid.innerHTML = '';
+            const files = Array.from(fileList || []);
+            if (!files.length) {
+                grid.classList.add('hidden');
+                summary.textContent = 'Supports multiple JPG, PNG, or WEBP images at once';
+                return;
+            }
+            summary.textContent = files.length + ' photo' + (files.length === 1 ? '' : 's') + ' selected — ready to upload';
+            grid.classList.remove('hidden');
+            files.slice(0, 20).forEach(file => {
+                const url = URL.createObjectURL(file);
+                const card = document.createElement('div');
+                card.className = 'aspect-square rounded-2xl overflow-hidden border border-sand bg-linen';
+                card.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-cover">`;
+                grid.appendChild(card);
+            });
+        }
+
+        const dz = document.getElementById('guest-dropzone');
+        if (dz) {
+            ['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => {
+                e.preventDefault(); dz.classList.add('border-terracotta', 'bg-linen');
+            }));
+            ['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => {
+                e.preventDefault(); dz.classList.remove('border-terracotta', 'bg-linen');
+            }));
+            dz.addEventListener('drop', e => {
+                const input = document.getElementById('guest-files-input');
+                input.files = e.dataTransfer.files;
+                renderMultiPreview(input.files, 'guest-preview-grid', 'guest-file-summary');
+            });
+        }
+    </script>
+</section>
+</html>

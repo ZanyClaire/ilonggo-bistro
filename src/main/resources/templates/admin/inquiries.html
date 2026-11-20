@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-layout :: adminPage('Guest Inquiries', ~{::section})}">
+<section class="space-y-4">
+    <div th:if="${#lists.isEmpty(inquiries)}" class="bg-white rounded-3xl border border-sand p-10 text-center text-sm text-slatewarm">
+        No guest inquiries received yet.
+    </div>
+
+    <div th:each="inq : ${inquiries}"
+         class="bg-white rounded-3xl border p-6 space-y-3"
+         th:classappend="${!inq.read} ? 'border-terracotta/50 shadow-xs' : 'border-sand opacity-80'">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-terracotta" th:text="${inq.inquiryType}">Topic</span>
+                <h3 class="font-display text-xl font-semibold text-espresso" th:text="${inq.name}">Name</h3>
+                <p class="text-xs text-slatewarm">
+                    <span th:text="${inq.email}">email</span>
+                    <span th:if="${inq.phone != null}" th:text="' · ' + ${inq.phone}"></span>
+                    · <span th:text="${inq.formattedCreatedAt()}">date</span>
+                </p>
+            </div>
+            <form th:action="@{/admin/inquiries/{id}/toggle-read(id=${inq.id})}" method="post">
+                <button type="submit"
+                        class="rounded-full border border-sand px-4 py-1.5 text-xs font-semibold hover:border-forest cursor-pointer"
+                        th:text="${inq.read ? 'Mark Unread' : 'Mark as Read'}">Mark as Read</button>
+            </form>
+        </div>
+        <p class="text-sm text-espresso leading-relaxed" th:text="${inq.message}">Message</p>
+    </div>
+</section>
+</html>

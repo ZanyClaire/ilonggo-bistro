@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/admin-layout :: adminPage('Operations Dashboard', ~{::section})}">
+<section class="space-y-8">
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+        <div class="bg-forest text-white rounded-2xl p-5 sm:col-span-2">
+            <p class="text-xs font-semibold uppercase tracking-wider text-calamansi">Today's POS Sales</p>
+            <p class="font-display text-3xl font-bold mt-2 tabular-nums" th:text="${salesSummary.formattedTodayRevenue()}">₱0.00</p>
+            <p class="text-xs text-alabaster/75 mt-1 tabular-nums"
+               th:text="${salesSummary.todayOrders()} + ' paid order(s) today · All-time: ' + ${salesSummary.formattedAllTimeRevenue()}">0 orders</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-sand p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slatewarm">Today's Bookings</p>
+            <p class="font-display text-3xl font-bold text-espresso mt-2 tabular-nums" th:text="${todayBookingsCount}">0</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-sand p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slatewarm">Pending Bookings</p>
+            <p class="font-display text-3xl font-bold text-terracotta mt-2 tabular-nums" th:text="${pendingBookingsCount}">0</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-sand p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slatewarm">Active Dishes</p>
+            <p class="font-display text-3xl font-bold text-forest mt-2 tabular-nums" th:text="${availableDishesCount}">0</p>
+            <p class="text-[11px] text-slatewarm mt-1" th:text="${soldOutDishesCount} + ' sold out'">0 sold out</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-sand p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slatewarm">Unread Inquiries</p>
+            <p class="font-display text-3xl font-bold text-espresso mt-2 tabular-nums" th:text="${unreadInquiriesCount}">0</p>
+        </div>
+    </div>
+
+    <!-- Role-Filtered Quick Actions -->
+    <div class="flex flex-wrap gap-3">
+        <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
+           th:href="@{/admin/pos}" class="rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold px-5 py-2.5 shadow-xs">+ New POS Order &amp; Receipt</a>
+        <a sec:authorize="hasAnyRole('ADMIN','CASHIER','KITCHEN_STAFF')"
+           th:href="@{/admin/deliveries}" class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5">
+            Delivery Dispatch
+            <span th:if="${activeDeliveriesCount > 0}"
+                  class="ml-1.5 px-2 py-0.5 rounded-full bg-calamansi text-espresso text-[10px] font-bold"
+                  th:text="${activeDeliveriesCount}">0</span>
+        </a>
+        <a sec:authorize="hasAnyRole('ADMIN','CASHIER')"
+           th:href="@{/admin/sales}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">View Buyer &amp; Sales History</a>
+        <a sec:authorize="hasAnyRole('ADMIN','KITCHEN_STAFF')"
+           th:href="@{/admin/categories}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">+ Add Menu Category</a>
+        <a sec:authorize="hasAnyRole('ADMIN','KITCHEN_STAFF')"
+           th:href="@{/admin/menu}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">Manage Dishes</a>
+        <a sec:authorize="hasAnyRole('ADMIN','BOOKING_HOST')"
+           th:href="@{/admin/reservations}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">Reservations Queue</a>
+        <a sec:authorize="hasRole('ADMIN')"
+           th:href="@{/admin/staff}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">Staff &amp; Roles</a>
+        <a sec:authorize="hasRole('ADMIN')"
+           th:href="@{/admin/events}" class="rounded-full bg-white border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">
+            + Upload Event Photos
+            <span th:if="${pendingEventPhotosCount > 0}"
+                  class="ml-1.5 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px]"
+                  th:text="${pendingEventPhotosCount}">0</span>
+        </a>
+        <a th:href="@{/admin/account}" class="rounded-full bg-linen border border-sand hover:border-forest text-espresso text-xs font-semibold px-5 py-2.5">Account &amp; Password</a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <!-- Recent POS Sales / Who Bought -->
+        <div class="bg-white rounded-3xl border border-sand overflow-hidden">
+            <div class="px-6 py-4 border-b border-sand flex items-center justify-between">
+                <h2 class="font-display text-xl font-semibold text-espresso">Recent Purchases (POS)</h2>
+                <a th:href="@{/admin/sales}" class="text-xs font-semibold text-terracotta hover:underline">Full history →</a>
+            </div>
+            <div th:if="${#lists.isEmpty(recentOrders)}" class="p-8 text-center text-sm text-slatewarm">
+                No POS sales recorded yet. <a th:href="@{/admin/pos}" class="text-terracotta font-semibold underline">Start first order</a>.
+            </div>
+            <div th:if="${!#lists.isEmpty(recentOrders)}" class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-alabaster text-xs uppercase tracking-wider text-slatewarm">
+                    <tr>
+                        <th class="px-5 py-3">Receipt</th>
+                        <th class="px-5 py-3">Buyer</th>
+                        <th class="px-5 py-3">Total</th>
+                        <th class="px-5 py-3 text-right">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-sand">
+                    <tr th:each="ord : ${recentOrders}">
+                        <td class="px-5 py-3.5">
+                            <div class="font-mono text-xs font-bold text-forest" th:text="${ord.receiptNumber}">OR-2026-00101</div>
+                            <div class="text-[11px] text-slatewarm" th:text="${ord.formattedCreatedAt()}">Time</div>
+                        </td>
+                        <td class="px-5 py-3.5">
+                            <div class="font-semibold text-espresso" th:text="${ord.customerName}">Buyer</div>
+                            <div class="text-xs text-slatewarm" th:text="${ord.totalItemCount()} + ' item(s) · ' + ${ord.paymentMethod.label}">2 items</div>
+                        </td>
+                        <td class="px-5 py-3.5 font-semibold tabular-nums"
+                            th:classappend="${ord.status.name() == 'VOIDED'} ? 'line-through text-red-700' : 'text-espresso'"
+                            th:text="${ord.formattedTotal()}">₱0.00</td>
+                        <td class="px-5 py-3.5 text-right">
+                            <a th:href="@{/admin/pos/receipt/{ref}(ref=${ord.receiptNumber})}"
+                               class="text-xs font-semibold text-terracotta hover:underline">Receipt</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Upcoming Reservations Snapshot -->
+        <div class="bg-white rounded-3xl border border-sand overflow-hidden">
+            <div class="px-6 py-4 border-b border-sand flex items-center justify-between">
+                <h2 class="font-display text-xl font-semibold text-espresso">Upcoming Table Reservations</h2>
+                <a th:href="@{/admin/reservations}" class="text-xs font-semibold text-terracotta hover:underline">View all →</a>
+            </div>
+
+            <div th:if="${#lists.isEmpty(upcomingReservations)}" class="p-8 text-center text-sm text-slatewarm">
+                No upcoming reservations yet.
+            </div>
+
+            <div th:if="${!#lists.isEmpty(upcomingReservations)}" class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-alabaster text-xs uppercase tracking-wider text-slatewarm">
+                    <tr>
+                        <th class="px-5 py-3">Guest</th>
+                        <th class="px-5 py-3">Date &amp; Time</th>
+                        <th class="px-5 py-3">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-sand">
+                    <tr th:each="res : ${upcomingReservations}">
+                        <td class="px-5 py-3.5">
+                            <div class="font-semibold text-espresso" th:text="${res.guestName}">Guest</div>
+                            <div class="text-xs text-slatewarm" th:text="${res.partySize} + ' · ' + ${res.seatingPreference}">4 · Window</div>
+                        </td>
+                        <td class="px-5 py-3.5 tabular-nums text-xs">
+                            <div class="font-medium text-espresso" th:text="${res.formattedDate()}">Date</div>
+                            <div class="text-slatewarm" th:text="${res.formattedTime()}">Time</div>
+                        </td>
+                        <td class="px-5 py-3.5">
+                            <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-linen text-espresso"
+                                  th:text="${res.status.label}">Pending</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

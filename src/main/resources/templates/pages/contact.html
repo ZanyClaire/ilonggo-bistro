@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Contact & Events', 'Contact Ilonggo Bistro in Barotac Nuevo, Iloilo for group celebrations, private dining, or inquiries.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+    <div class="max-w-2xl space-y-3 mb-10">
+        <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Get in Touch</p>
+        <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">Contact &amp; Private Gatherings</h1>
+        <p class="text-slatewarm text-sm sm:text-base leading-relaxed">
+            Planning a family reunion, birthday lunch, or barkada celebration in Barotac Nuevo? Drop us a message and our team will reply quickly.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="lg:col-span-7 bg-white rounded-3xl border border-sand p-6 sm:p-10 shadow-xs">
+            <div th:if="${contactSuccess}"
+                 class="mb-6 rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-900 font-medium"
+                 th:text="${contactSuccess}">Sent!</div>
+
+            <form th:action="@{/contact}" th:object="${inquiryRequest}" method="post" class="space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="name" class="block text-sm font-semibold text-espresso mb-2">Your Name</label>
+                        <input id="name" type="text" th:field="*{name}" required placeholder="Juan Dela Cruz"
+                               class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                        <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="mt-1 text-xs text-red-700"></p>
+                    </div>
+                    <div>
+                        <label for="phone" class="block text-sm font-semibold text-espresso mb-2">Phone (Optional)</label>
+                        <input id="phone" type="tel" th:field="*{phone}" placeholder="0917 123 4567"
+                               class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="email" class="block text-sm font-semibold text-espresso mb-2">Email Address</label>
+                        <input id="email" type="email" th:field="*{email}" required placeholder="you@example.com"
+                               class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                        <p th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="mt-1 text-xs text-red-700"></p>
+                    </div>
+                    <div>
+                        <label for="inquiryType" class="block text-sm font-semibold text-espresso mb-2">Topic</label>
+                        <select id="inquiryType" th:field="*{inquiryType}"
+                                class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                            <option th:each="topic : ${topics}" th:value="${topic}" th:text="${topic}">General Question</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="message" class="block text-sm font-semibold text-espresso mb-2">Message</label>
+                    <textarea id="message" th:field="*{message}" rows="5" required
+                              placeholder="Tell us your preferred date, guest count, or question..."
+                              class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"></textarea>
+                    <p th:if="${#fields.hasErrors('message')}" th:errors="*{message}" class="mt-1 text-xs text-red-700"></p>
+                </div>
+
+                <button type="submit"
+                        class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm transition-colors cursor-pointer">
+                    Send Message
+                </button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-5 space-y-5">
+            <div class="bg-white rounded-3xl border border-sand p-7 space-y-4">
+                <h2 class="font-display text-2xl font-semibold text-espresso">Direct Details</h2>
+                <div class="space-y-3 text-sm text-slatewarm">
+                    <p><strong class="text-espresso">Address:</strong><br><span th:text="${storeProfile.addressLine()}">Burgos-Osmeña St</span></p>
+                    <p><strong class="text-espresso">Plus Code:</strong><br><span class="font-mono text-xs" th:text="${storeProfile.plusCode()}">VPW2+QF</span></p>
+                    <p><strong class="text-espresso">Hours:</strong><br><span th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</span> Daily</p>
+                    <p><strong class="text-espresso">Phone:</strong><br>
+                        <a th:href="${storeProfile.formattedTelHref()}" class="text-terracotta font-semibold hover:underline"
+                           th:text="${storeProfile.phoneNumber()}">+63 917 000 0000</a>
+                    </p>
+                    <p><strong class="text-espresso">Email:</strong><br>
+                        <a th:href="'mailto:' + ${storeProfile.email()}" class="text-terracotta font-semibold hover:underline"
+                           th:text="${storeProfile.email()}">hello@ilonggobistro.ph</a>
+                    </p>
+                </div>
+                <div class="pt-3 flex flex-wrap gap-3">
+                    <a th:href="${storeProfile.messengerUrl()}" target="_blank" rel="noopener"
+                       class="rounded-full bg-forest text-white text-xs font-semibold px-5 py-2.5">Chat on Messenger ↗</a>
+                    <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+                       class="rounded-full bg-linen text-espresso text-xs font-semibold px-5 py-2.5">Google Maps ↗</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

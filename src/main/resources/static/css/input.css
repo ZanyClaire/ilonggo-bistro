@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@source "../../templates";
+
+@theme {
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-alabaster: #FAF7F2;
+  --color-linen: #F2ECE1;
+  --color-sand: #E8DFD3;
+  --color-terracotta: #B84A27;
+  --color-terracotta-dark: #94391C;
+  --color-forest: #1F3A2E;
+  --color-forest-soft: #2C5040;
+  --color-calamansi: #D99B26;
+  --color-espresso: #1E1916;
+  --color-slatewarm: #5E544C;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--color-alabaster);
+    color: var(--color-espresso);
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.htmx-indicator {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .receipt-paper {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+}

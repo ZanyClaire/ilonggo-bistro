@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Reserve a Table', 'Book a dine-in table at Ilonggo Bistro on Burgos-Osmeña St, Barotac Nuevo, Iloilo. Open daily from 7 AM to 9 PM.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+    <div class="max-w-2xl space-y-3 mb-10">
+        <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Dine-In Hospitality</p>
+        <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">Reserve your table</h1>
+        <p class="text-slatewarm text-sm sm:text-base leading-relaxed">
+            Book a spot for morning coffee, family lunch, merienda, or dinner at Burgos-Osmeña St.
+            Bookings open 7:00 AM with last seating 30 minutes before closing.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- Reservation Booking Form -->
+        <div class="lg:col-span-7 bg-white rounded-3xl border border-sand p-6 sm:p-10 shadow-xs">
+            <div th:if="${bookingError}"
+                 class="mb-6 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-900 font-medium"
+                 th:text="${bookingError}">Error</div>
+
+            <form th:action="@{/reservations}" th:object="${reservationRequest}" method="post" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="reservationDate" class="block text-sm font-semibold text-espresso mb-2">Date</label>
+                        <input id="reservationDate"
+                               type="date"
+                               th:field="*{reservationDate}"
+                               th:min="${minDate}"
+                               th:max="${maxDate}"
+                               hx-get="/reservations/slots"
+                               hx-target="#reservationTime"
+                               hx-trigger="change"
+                               hx-include="#reservationDate"
+                               required
+                               class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                        <p th:if="${#fields.hasErrors('reservationDate')}" th:errors="*{reservationDate}"
+                           class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                    </div>
+
+                    <div>
+                        <label for="reservationTime" class="block text-sm font-semibold text-espresso mb-2">Time Slot (Asia/Manila)</label>
+                        <select id="reservationTime"
+                                th:field="*{reservationTime}"
+                                required
+                                class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                            <th:block th:replace="~{fragments/time-slots :: options(selectedTime=${reservationRequest.reservationTime})}"></th:block>
+                        </select>
+                        <p th:if="${#fields.hasErrors('reservationTime')}" th:errors="*{reservationTime}"
+                           class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="partySize" class="block text-sm font-semibold text-espresso mb-2">Party Size</label>
+                        <select id="partySize" th:field="*{partySize}"
+                                class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                            <option th:each="n : ${#numbers.sequence(1, storeProfile.maxPartySize())}"
+                                    th:value="${n}"
+                                    th:text="${n == 1 ? '1 Guest' : n + ' Guests'}">2 Guests</option>
+                        </select>
+                        <p th:if="${#fields.hasErrors('partySize')}" th:errors="*{partySize}"
+                           class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                    </div>
+
+                    <div>
+                        <label for="seatingPreference" class="block text-sm font-semibold text-espresso mb-2">Seating Preference</label>
+                        <select id="seatingPreference" th:field="*{seatingPreference}"
+                                class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                            <option th:each="opt : ${seatingOptions}" th:value="${opt}" th:text="${opt}">Main Dining</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border-t border-sand pt-6 space-y-5">
+                    <div>
+                        <label for="guestName" class="block text-sm font-semibold text-espresso mb-2">Full Name</label>
+                        <input id="guestName" type="text" th:field="*{guestName}" placeholder="e.g., Maria Santos" required
+                               class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                        <p th:if="${#fields.hasErrors('guestName')}" th:errors="*{guestName}"
+                           class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label for="phone" class="block text-sm font-semibold text-espresso mb-2">Mobile Number</label>
+                            <input id="phone" type="tel" th:field="*{phone}" placeholder="0917 123 4567" required
+                                   class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                            <p th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"
+                               class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                        </div>
+
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-espresso mb-2">Email (Optional)</label>
+                            <input id="email" type="email" th:field="*{email}" placeholder="you@example.com"
+                                   class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta">
+                            <p th:if="${#fields.hasErrors('email')}" th:errors="*{email}"
+                               class="mt-1.5 text-xs text-red-700 font-medium"></p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="specialRequests" class="block text-sm font-semibold text-espresso mb-2">
+                            Special Requests / Occasion (Optional)
+                        </label>
+                        <textarea id="specialRequests" th:field="*{specialRequests}" rows="3"
+                                  placeholder="High chair needed, birthday celebration, pre-order KBL palayok, dietary notes..."
+                                  class="w-full rounded-2xl bg-alabaster border border-sand px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40 focus:border-terracotta"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm shadow-sm transition-colors cursor-pointer">
+                    Confirm Table Request
+                </button>
+            </form>
+        </div>
+
+        <!-- Side Panel: Hours + Existing Booking Lookup -->
+        <div class="lg:col-span-5 space-y-6">
+            <div class="bg-forest text-alabaster rounded-3xl p-7 space-y-4">
+                <h2 class="font-display text-2xl font-semibold text-white">Good to know</h2>
+                <ul class="space-y-3 text-sm text-alabaster/85">
+                    <li>• <strong>Daily Hours:</strong> <span class="tabular-nums" th:text="${businessStatus.hoursRange()}">7 AM – 9 PM</span></li>
+                    <li>• <strong>Grace Period:</strong> We hold reserved tables for 15 minutes past your booking time.</li>
+                    <li>• <strong>Large Celebrations:</strong> Hosting more than <span th:text="${storeProfile.maxPartySize()}">20</span> guests? Send us an inquiry on our <a th:href="@{/contact}" class="underline text-calamansi">Contact page</a>.</li>
+                    <li>• <strong>Walk-ins:</strong> Always welcome whenever tables are available!</li>
+                </ul>
+            </div>
+
+            <!-- Lookup / Cancel Existing Reservation -->
+            <div id="lookup" class="bg-white rounded-3xl border border-sand p-7 space-y-4 shadow-xs">
+                <h2 class="font-display text-xl font-semibold text-espresso">Check or Cancel a Booking</h2>
+                <p class="text-xs text-slatewarm">Enter your booking reference code (e.g., <span class="font-mono">IB-2026-BN01</span>).</p>
+
+                <form th:action="@{/reservations}" method="get" class="flex gap-2">
+                    <input type="text" name="ref" th:value="${lookupRef}" placeholder="IB-2026-XXXX" required
+                           class="flex-1 rounded-2xl bg-alabaster border border-sand px-4 py-2.5 text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                    <button type="submit"
+                            class="rounded-2xl bg-forest hover:bg-forest-soft text-white text-sm font-semibold px-5 py-2.5 cursor-pointer">
+                        Find
+                    </button>
+                </form>
+
+                <div th:if="${lookupMessage}" class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 font-medium"
+                     th:text="${lookupMessage}"></div>
+                <div th:if="${lookupError}" class="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-900 font-medium"
+                     th:text="${lookupError}"></div>
+                <div th:if="${lookupNotFound}" class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 font-medium">
+                    No reservation matched that reference code. Double-check the letters and numbers.
+                </div>
+
+                <div th:if="${foundReservation != null}" class="rounded-2xl bg-alabaster border border-sand p-4 space-y-3 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono font-bold text-forest" th:text="${foundReservation.referenceCode}">IB-2026-XXXX</span>
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-sand text-espresso"
+                              th:text="${foundReservation.status.label}">Confirmed</span>
+                    </div>
+                    <div class="text-xs text-slatewarm space-y-1">
+                        <p><strong class="text-espresso" th:text="${foundReservation.guestName}">Guest</strong> · <span th:text="${foundReservation.partySize} + ' guests'">4 guests</span></p>
+                        <p><span th:text="${foundReservation.formattedDate()}">Date</span> at <span th:text="${foundReservation.formattedTime()}">Time</span></p>
+                        <p>Seating: <span th:text="${foundReservation.seatingPreference}">Main Dining</span></p>
+                    </div>
+
+                    <form th:if="${foundReservation.cancellableByGuest}"
+                          th:action="@{/reservations/{ref}/cancel(ref=${foundReservation.referenceCode})}"
+                          method="post"
+                          class="pt-3 border-t border-sand space-y-2">
+                        <label class="block text-xs font-medium text-slatewarm">Cancel booking (enter last 4 digits of your phone)</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="phoneLastDigits" maxlength="10" placeholder="Last 4 digits" required
+                                   class="flex-1 rounded-xl bg-white border border-sand px-3 py-2 text-xs">
+                            <button type="submit"
+                                    class="rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 cursor-pointer">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

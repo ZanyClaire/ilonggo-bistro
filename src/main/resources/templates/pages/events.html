@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Events & Photo Albums', 'Browse business events, Awards Nights, Dining Events, and Catering photo albums hosted by Ilonggo Bistro in Barotac Nuevo, Iloilo.', ~{::section})}">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-sand">
+        <div class="max-w-2xl space-y-3">
+            <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Business Events &amp; Gatherings</p>
+            <h1 class="font-display text-4xl sm:text-5xl font-semibold text-espresso">Event Photo Albums</h1>
+            <p class="text-slatewarm text-sm sm:text-base leading-relaxed">
+                Relive our Awards Nights, curated Dining Events, and Barotac Nuevo Catering showcases — and upload your own snapshots to open event albums.
+            </p>
+        </div>
+        <a th:href="@{/contact}"
+           class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold px-6 py-3 shadow-xs">
+            Book an Event or Catering
+        </a>
+    </div>
+
+    <!-- HTMX Event Type Tabs -->
+    <div class="flex flex-wrap gap-2 py-7">
+        <button type="button"
+                hx-get="/events/fragment?type=All"
+                hx-target="#events-grid-container"
+                hx-swap="outerHTML"
+                onclick="setEventTab(this)"
+                th:classappend="${activeType == 'All'} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+                class="event-tab px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors cursor-pointer">
+            All Events
+        </button>
+        <button th:each="type : ${eventTypes}"
+                type="button"
+                th:attr="hx-get=@{/events/fragment(type=${type})}"
+                hx-target="#events-grid-container"
+                hx-swap="outerHTML"
+                onclick="setEventTab(this)"
+                th:classappend="${activeType == type} ? 'bg-forest text-white border-forest' : 'bg-white text-espresso border-sand'"
+                class="event-tab px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors cursor-pointer"
+                th:text="${type}">Awards Night</button>
+    </div>
+
+    <div th:replace="~{fragments/event-cards :: grid}"></div>
+
+    <script>
+        function setEventTab(btn) {
+            document.querySelectorAll('.event-tab').forEach(el => {
+                el.classList.remove('bg-forest', 'text-white', 'border-forest');
+                el.classList.add('bg-white', 'text-espresso', 'border-sand');
+            });
+            btn.classList.remove('bg-white', 'text-espresso', 'border-sand');
+            btn.classList.add('bg-forest', 'text-white', 'border-forest');
+        }
+    </script>
+</section>
+</html>

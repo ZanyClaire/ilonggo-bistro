@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Page Not Found', 'Page not found on Ilonggo Bistro.', ~{::section})}">
+<section class="max-w-xl mx-auto px-4 py-24 text-center space-y-5">
+    <p class="text-xs uppercase tracking-[0.2em] text-terracotta font-semibold">404</p>
+    <h1 class="font-display text-4xl font-semibold text-espresso">We couldn't find that page</h1>
+    <p class="text-sm text-slatewarm" th:text="${errorMessage ?: 'The link may have moved or expired.'}">Page not found.</p>
+    <div class="flex justify-center gap-3 pt-2">
+        <a th:href="@{/}" class="rounded-full bg-terracotta text-white text-sm font-semibold px-6 py-3">Back to Home</a>
+        <a th:href="@{/menu}" class="rounded-full border border-sand bg-white text-espresso text-sm font-semibold px-6 py-3">Explore Menu</a>
+    </div>
+</section>
+</html>

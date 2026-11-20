@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: page('Booking Received', 'Your dine-in table reservation request at Ilonggo Bistro in Barotac Nuevo, Iloilo.', ~{::section})}">
+<section class="max-w-2xl mx-auto px-4 sm:px-6 pt-16">
+    <div class="bg-white rounded-[2rem] border border-sand p-8 sm:p-12 shadow-sm text-center space-y-6">
+        <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-display text-2xl font-bold">
+            ✓
+        </div>
+
+        <div class="space-y-2">
+            <p class="text-xs uppercase tracking-[0.18em] text-terracotta font-semibold">Reservation Recorded</p>
+            <h1 class="font-display text-3xl sm:text-4xl font-semibold text-espresso">
+                Madamo gid nga salamat, <span th:text="${reservation.guestName}">Guest</span>!
+            </h1>
+            <p class="text-sm text-slatewarm">
+                Save your reference code below so you can check your status or show it at the door.
+            </p>
+        </div>
+
+        <div class="inline-block rounded-2xl bg-linen border border-sand px-6 py-4">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slatewarm font-semibold">Booking Reference</div>
+            <div class="font-mono text-2xl sm:text-3xl font-bold text-forest mt-1 tracking-wider"
+                 th:text="${reservation.referenceCode}">IB-2026-ABCD</div>
+        </div>
+
+        <div class="rounded-2xl bg-alabaster border border-sand p-6 text-left grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+                <div class="text-xs text-slatewarm">Date</div>
+                <div class="font-semibold text-espresso mt-0.5" th:text="${reservation.formattedDate()}">Date</div>
+            </div>
+            <div>
+                <div class="text-xs text-slatewarm">Time</div>
+                <div class="font-semibold text-espresso mt-0.5 tabular-nums" th:text="${reservation.formattedTime()}">Time</div>
+            </div>
+            <div>
+                <div class="text-xs text-slatewarm">Party Size</div>
+                <div class="font-semibold text-espresso mt-0.5" th:text="${reservation.partySize} + ' Guests'">2 Guests</div>
+            </div>
+            <div>
+                <div class="text-xs text-slatewarm">Seating</div>
+                <div class="font-semibold text-espresso mt-0.5" th:text="${reservation.seatingPreference}">Main Dining</div>
+            </div>
+            <div class="sm:col-span-2 pt-2 border-t border-sand">
+                <div class="text-xs text-slatewarm">Location</div>
+                <div class="font-semibold text-espresso mt-0.5" th:text="${storeProfile.addressLine()}">Burgos-Osmeña St, Barotac Nuevo, 5007 Iloilo</div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+            <a th:href="@{/menu}"
+               class="inline-flex items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold px-6 py-3">
+                Preview the Menu
+            </a>
+            <a th:href="${storeProfile.googleMapsUrl()}" target="_blank" rel="noopener"
+               class="inline-flex items-center justify-center rounded-full bg-forest hover:bg-forest-soft text-white text-sm font-semibold px-6 py-3">
+                Get Directions ↗
+            </a>
+        </div>
+    </div>
+</section>
+</html>
