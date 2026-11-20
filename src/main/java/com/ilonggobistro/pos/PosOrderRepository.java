@@ -15,6 +15,9 @@ public interface PosOrderRepository extends JpaRepository<PosOrder, Long> {
     @EntityGraph(attributePaths = "items")
     Optional<PosOrder> findWithItemsByReceiptNumberIgnoreCase(String receiptNumber);
 
+    @EntityGraph(attributePaths = "items")
+    Optional<PosOrder> findWithItemsByClientOrderUuid(String clientOrderUuid);
+
     boolean existsByReceiptNumber(String receiptNumber);
 
     @EntityGraph(attributePaths = "items")
@@ -26,7 +29,8 @@ public interface PosOrderRepository extends JpaRepository<PosOrder, Long> {
             WHERE (:query IS NULL
                    OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :query, '%'))
                    OR LOWER(COALESCE(o.customerPhone, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                   OR LOWER(o.receiptNumber) LIKE LOWER(CONCAT('%', :query, '%')))
+                   OR LOWER(o.receiptNumber) LIKE LOWER(CONCAT('%', :query, '%'))
+                   OR LOWER(COALESCE(o.offlineReceiptNumber, '')) LIKE LOWER(CONCAT('%', :query, '%')))
               AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod)
               AND (:status IS NULL OR o.status = :status)
               AND (:fromTime IS NULL OR o.createdAt >= :fromTime)

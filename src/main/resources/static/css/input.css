@@ -59,4 +59,10 @@
     margin: 0 auto !important;
     padding: 0 !important;
   }
+  .print-reset-modal {
+    position: static !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
 }

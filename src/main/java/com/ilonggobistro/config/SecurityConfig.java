@@ -52,6 +52,7 @@ public class SecurityConfig {
                             "/order/**", "/orders/**", "/api/delivery/quote", "/api/webhooks/delivery",
                             "/about", "/contact", "/sitemap.xml",
                             "/css/**", "/js/**", "/images/**", "/uploads/**",
+                            "/manifest.webmanifest", "/sw-pos.js",
                             "/actuator/health", "/error", "/error/**",
                             "/admin/login", "/admin/forgot-password/**", "/admin/dev-google-login"
                     ).permitAll();

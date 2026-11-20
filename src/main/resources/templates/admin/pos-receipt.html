@@ -47,6 +47,10 @@
                 <span class="text-slatewarm">Receipt #:</span>
                 <strong th:text="${order.receiptNumber}">OR-2026-00101</strong>
             </div>
+            <div th:if="${order.offlineReceiptNumber != null}" class="flex justify-between">
+                <span class="text-slatewarm">Offline Ref:</span>
+                <span th:text="${order.offlineReceiptNumber}">OR-OFF-2026-XXXXX</span>
+            </div>
             <div class="flex justify-between">
                 <span class="text-slatewarm">Date / Time:</span>
                 <span th:text="${order.formattedCreatedAt()}">Nov 19, 2026</span>

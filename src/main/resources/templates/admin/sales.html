@@ -33,7 +33,7 @@
           class="bg-white rounded-3xl border border-sand p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
         <div class="lg:col-span-4">
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Buyer Name, Phone, or Receipt #</label>
-            <input type="search" name="q" th:value="${searchQuery}" placeholder="Search buyer name or OR-2026..."
+            <input type="search" name="q" th:value="${searchQuery}" placeholder="Search buyer name, OR-2026..., or OR-OFF-..."
                    class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
         </div>
         <div class="lg:col-span-2">
@@ -91,6 +91,11 @@
                 <tr th:each="ord : ${orders}" class="hover:bg-alabaster/60 align-top">
                     <td class="px-5 py-4 whitespace-nowrap">
                         <div class="font-mono text-xs font-bold text-forest" th:text="${ord.receiptNumber}">OR-2026-00101</div>
+                        <div th:if="${ord.syncedFromOffline}" class="mt-0.5 flex flex-wrap items-center gap-1">
+                            <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 text-[10px] font-bold">Offline Synced</span>
+                            <span th:if="${ord.offlineReceiptNumber != null}" class="font-mono text-[10px] text-slatewarm"
+                                  th:text="${ord.offlineReceiptNumber}">OR-OFF</span>
+                        </div>
                         <div class="text-xs text-slatewarm mt-0.5 tabular-nums" th:text="${ord.formattedCreatedAt()}">Date</div>
                         <div class="text-[11px] text-slatewarm mt-0.5" th:text="'Cashier: ' + ${ord.cashierUsername}">Cashier</div>
                     </td>

@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${pageTitle} + ' — Admin · ' + ${storeProfile.bistroName()}">Admin · Ilonggo Bistro</title>
     <link rel="icon" type="image/jpeg" th:href="@{/images/logo.jpg}">
+    <link rel="manifest" th:href="@{/manifest.webmanifest}">
+    <meta name="theme-color" content="#1F3A2E">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
 
@@ -15,6 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script th:src="@{/js/htmx.min.js}" defer></script>
+    <script th:src="@{/js/pos-offline.js}" defer></script>
 </head>
 <body class="bg-alabaster text-espresso min-h-screen flex flex-col lg:flex-row">
 

@@ -10,11 +10,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PosService {
@@ -121,6 +123,157 @@ public class PosService {
         );
         orderItems.forEach(order::addItem);
         return orderRepository.save(order);
+    }
+
+    @Transactional
+    public PosOfflineSyncDtos.OfflineSyncBatchResponse syncOfflineBatch(
+            PosOfflineSyncDtos.OfflineSyncBatchRequest batch, String cashierUsername) {
+        List<PosOfflineSyncDtos.OfflineOrderSyncOutcome> outcomes = new ArrayList<>();
+        int synced = 0;
+        int alreadySynced = 0;
+        int failed = 0;
+
+        for (PosOfflineSyncDtos.OfflineOrderPayload payload : batch.orders()) {
+            try {
+                String uuid = payload.clientOrderUuid().trim();
+                Optional<PosOrder> existing = orderRepository.findWithItemsByClientOrderUuid(uuid);
+                if (existing.isPresent()) {
+                    alreadySynced++;
+                    outcomes.add(new PosOfflineSyncDtos.OfflineOrderSyncOutcome(
+                            uuid,
+                            payload.offlineReceiptNumber(),
+                            existing.get().getReceiptNumber(),
+                            "ALREADY_SYNCED",
+                            "Order was already synced previously (deduplicated)."
+                    ));
+                    continue;
+                }
+
+                PosOrder saved = persistSingleOfflineOrder(payload, cashierUsername);
+                synced++;
+                outcomes.add(new PosOfflineSyncDtos.OfflineOrderSyncOutcome(
+                        uuid,
+                        payload.offlineReceiptNumber(),
+                        saved.getReceiptNumber(),
+                        "SYNCED",
+                        "Synced cleanly to server."
+                ));
+            } catch (IllegalArgumentException ex) {
+                failed++;
+                outcomes.add(new PosOfflineSyncDtos.OfflineOrderSyncOutcome(
+                        payload.clientOrderUuid(),
+                        payload.offlineReceiptNumber(),
+                        null,
+                        "FAILED",
+                        ex.getMessage()
+                ));
+            }
+        }
+
+        SalesSummary summary = getSalesSummary();
+        return new PosOfflineSyncDtos.OfflineSyncBatchResponse(
+                synced,
+                alreadySynced,
+                failed,
+                summary.formattedTodayRevenue(),
+                summary.todayOrders(),
+                outcomes
+        );
+    }
+
+    private PosOrder persistSingleOfflineOrder(PosOfflineSyncDtos.OfflineOrderPayload payload, String cashierUsername) {
+        if (payload.items() == null || payload.items().isEmpty()) {
+            throw new IllegalArgumentException("Offline order contains no items.");
+        }
+
+        List<PosOrderItem> orderItems = new ArrayList<>();
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (PosOfflineSyncDtos.OfflineItemLine line : payload.items()) {
+            if (line.quantity() <= 0) {
+                throw new IllegalArgumentException("Item quantity must be at least 1.");
+            }
+            MenuItem dbItem = line.menuItemId() != null
+                    ? menuItemRepository.findById(line.menuItemId()).orElse(null)
+                    : null;
+
+            Long resolvedMenuId = dbItem != null ? dbItem.getId() : null;
+            String resolvedName = dbItem != null ? dbItem.getName() : line.itemName().trim();
+            BigDecimal unitPrice = (dbItem != null ? dbItem.getPricePhp() : line.unitPricePhp())
+                    .max(BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(line.quantity()))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            subtotal = subtotal.add(lineTotal);
+            orderItems.add(new PosOrderItem(resolvedMenuId, resolvedName, unitPrice, line.quantity(), lineTotal));
+        }
+
+        String discountType = payload.discountType() != null ? payload.discountType().trim().toUpperCase() : "NONE";
+        String discountLabel = null;
+        BigDecimal discount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        if ("SENIOR_PWD".equals(discountType)) {
+            discountLabel = "Senior / PWD (20%)";
+            discount = subtotal.multiply(SENIOR_PWD_RATE).setScale(2, RoundingMode.HALF_UP);
+        } else if ("CUSTOM".equals(discountType) && payload.customDiscountPhp() != null
+                && payload.customDiscountPhp().compareTo(BigDecimal.ZERO) > 0) {
+            discountLabel = "Custom Discount";
+            discount = payload.customDiscountPhp().min(subtotal).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal total = subtotal.subtract(discount).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal tendered = (payload.amountTenderedPhp() != null && payload.amountTenderedPhp().compareTo(total) >= 0)
+                ? payload.amountTenderedPhp().setScale(2, RoundingMode.HALF_UP)
+                : total;
+        BigDecimal change = tendered.subtract(total).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+
+        LocalDateTime orderTime = parseOfflineTimestamp(payload.createdAtIso());
+        String customerName = (payload.customerName() == null || payload.customerName().isBlank())
+                ? "Walk-in Guest" : payload.customerName().trim();
+        String customerPhone = (payload.customerPhone() == null || payload.customerPhone().isBlank())
+                ? null : payload.customerPhone().trim();
+        String tableNumber = payload.orderType() == OrderType.DINE_IN
+                ? ((payload.tableNumber() == null || payload.tableNumber().isBlank()) ? "Counter" : payload.tableNumber().trim())
+                : "Takeout";
+        String notes = (payload.notes() == null || payload.notes().isBlank()) ? null : payload.notes().trim();
+        String cashier = (cashierUsername == null || cashierUsername.isBlank()) ? "staff" : cashierUsername;
+
+        String receiptNumber = generateUniqueReceiptNumber(orderTime.getYear());
+
+        PosOrder order = new PosOrder(
+                receiptNumber,
+                customerName,
+                customerPhone,
+                payload.orderType(),
+                tableNumber,
+                payload.paymentMethod(),
+                subtotal,
+                discountLabel,
+                discount,
+                total,
+                tendered,
+                change,
+                cashier,
+                notes,
+                orderTime
+        );
+        order.setClientOrderUuid(payload.clientOrderUuid().trim());
+        order.setOfflineReceiptNumber(payload.offlineReceiptNumber().trim());
+        order.setSyncedFromOffline(true);
+        orderItems.forEach(order::addItem);
+        return orderRepository.save(order);
+    }
+
+    private LocalDateTime parseOfflineTimestamp(String isoString) {
+        if (isoString == null || isoString.isBlank()) {
+            return LocalDateTime.now(clock);
+        }
+        try {
+            return Instant.parse(isoString.trim()).atZone(clock.getZone()).toLocalDateTime();
+        } catch (Exception ex) {
+            return LocalDateTime.now(clock);
+        }
     }
 
     @Transactional(readOnly = true)

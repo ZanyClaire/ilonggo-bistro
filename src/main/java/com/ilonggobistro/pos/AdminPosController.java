@@ -1,9 +1,13 @@
 package com.ilonggobistro.pos;
 
 import com.ilonggobistro.menu.MenuService;
+import com.ilonggobistro.shared.BusinessHoursService;
+import com.ilonggobistro.shared.StoreProfile;
+import com.ilonggobistro.shared.StoreSettingsService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +21,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Controller
@@ -25,20 +30,86 @@ public class AdminPosController {
 
     private final MenuService menuService;
     private final PosService posService;
+    private final StoreSettingsService storeSettingsService;
+    private final BusinessHoursService businessHoursService;
 
-    public AdminPosController(MenuService menuService, PosService posService) {
+    public AdminPosController(MenuService menuService,
+                              PosService posService,
+                              StoreSettingsService storeSettingsService,
+                              BusinessHoursService businessHoursService) {
         this.menuService = menuService;
         this.posService = posService;
+        this.storeSettingsService = storeSettingsService;
+        this.businessHoursService = businessHoursService;
     }
 
     @GetMapping("/pos")
-    public String posTerminal(Model model) {
+    public String posTerminal(Principal principal, Model model) {
         model.addAttribute("categories", menuService.listCategories());
         model.addAttribute("menuItems", menuService.listAllItems());
         model.addAttribute("orderTypes", OrderType.values());
         model.addAttribute("paymentMethods", PaymentMethod.values());
         model.addAttribute("salesSummary", posService.getSalesSummary());
+        model.addAttribute("cashierName", principal != null ? principal.getName() : "staff");
         return "admin/pos";
+    }
+
+    @GetMapping("/pos/catalog.json")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> posCatalogSnapshot(Principal principal) {
+        StoreProfile profile = storeSettingsService.getProfile();
+        PosService.SalesSummary summary = posService.getSalesSummary();
+
+        Map<String, Object> storeMap = new LinkedHashMap<>();
+        storeMap.put("bistroName", profile.bistroName());
+        storeMap.put("addressLine", profile.addressLine());
+        storeMap.put("plusCode", profile.plusCode());
+        storeMap.put("phoneNumber", profile.phoneNumber());
+        storeMap.put("hoursRange", businessHoursService.getCurrentStatus().hoursRange());
+        storeMap.put("cashierUsername", principal != null ? principal.getName() : "staff");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("store", storeMap);
+        body.put("todayRevenueFormatted", summary.formattedTodayRevenue());
+        body.put("todayOrdersCount", summary.todayOrders());
+        body.put("categories", menuService.listCategories().stream().map(c -> Map.of(
+                "id", c.getId(),
+                "name", c.getName(),
+                "slug", c.getSlug()
+        )).toList());
+        body.put("items", menuService.listAllItems().stream().map(i -> Map.of(
+                "id", i.getId(),
+                "name", i.getName(),
+                "pricePhp", i.getPricePhp(),
+                "formattedPrice", i.formattedPrice(),
+                "available", i.isAvailable(),
+                "categorySlug", i.getCategory().getSlug(),
+                "categoryName", i.getCategory().getName(),
+                "imageUrl", i.effectiveImageUrl()
+        )).toList());
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/pos/csrf-token")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> csrfToken(CsrfToken token) {
+        if (token == null) {
+            return ResponseEntity.ok(Map.of());
+        }
+        return ResponseEntity.ok(Map.of(
+                "headerName", token.getHeaderName(),
+                "token", token.getToken()
+        ));
+    }
+
+    @PostMapping("/pos/sync")
+    @ResponseBody
+    public ResponseEntity<PosOfflineSyncDtos.OfflineSyncBatchResponse> syncOfflineOrders(
+            @Valid @RequestBody PosOfflineSyncDtos.OfflineSyncBatchRequest request,
+            Principal principal) {
+        String cashier = principal != null ? principal.getName() : "staff";
+        PosOfflineSyncDtos.OfflineSyncBatchResponse response = posService.syncOfflineBatch(request, cashier);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/pos/checkout")

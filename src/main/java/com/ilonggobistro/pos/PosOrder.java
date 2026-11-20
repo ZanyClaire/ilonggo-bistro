@@ -83,6 +83,15 @@ public class PosOrder {
     @Column(name = "cashier_username", nullable = false, length = 80)
     private String cashierUsername;
 
+    @Column(name = "client_order_uuid", unique = true, length = 64)
+    private String clientOrderUuid;
+
+    @Column(name = "offline_receipt_number", length = 36)
+    private String offlineReceiptNumber;
+
+    @Column(name = "synced_from_offline", nullable = false)
+    private boolean syncedFromOffline = false;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -252,6 +261,30 @@ public class PosOrder {
 
     public String getCashierUsername() {
         return cashierUsername;
+    }
+
+    public String getClientOrderUuid() {
+        return clientOrderUuid;
+    }
+
+    public void setClientOrderUuid(String clientOrderUuid) {
+        this.clientOrderUuid = clientOrderUuid;
+    }
+
+    public String getOfflineReceiptNumber() {
+        return offlineReceiptNumber;
+    }
+
+    public void setOfflineReceiptNumber(String offlineReceiptNumber) {
+        this.offlineReceiptNumber = offlineReceiptNumber;
+    }
+
+    public boolean isSyncedFromOffline() {
+        return syncedFromOffline;
+    }
+
+    public void setSyncedFromOffline(boolean syncedFromOffline) {
+        this.syncedFromOffline = syncedFromOffline;
     }
 
     public String getNotes() {

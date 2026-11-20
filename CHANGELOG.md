@@ -13,6 +13,14 @@ All notable versions of **Ilonggo Bistro** are saved as annotated Git tags (`vMA
 
 ---
 
+## [v1.1.0] - 2026-11-20
+### Added — Offline-First PWA POS & Auto-Sync (Option 1)
+- **Installable POS PWA & Service Worker:** Added `manifest.webmanifest` ("Ilonggo Bistro POS") and `sw-pos.js` caching `/admin/pos`, `/admin/pos/catalog.json`, compiled CSS, JS, and dish images so cashiers can keep operating even during internet outages.
+- **IndexedDB Offline Order Queue & Instant 80mm Receipts:** Added `static/js/pos-offline.js` + live Online/Offline status bar, **Test Offline Mode** toggle, automatic mid-checkout network-drop failover, instant offline printable 80mm receipts (`OR-OFF-YYYY-XXXXX`), and a local **Offline Receipts** reprint drawer.
+- **Idempotent Background Auto-Sync:** Added Flyway `V7__pos_offline_sync.sql` (`client_order_uuid`, `offline_receipt_number`, `synced_from_offline`) and `POST /admin/pos/sync` + `GET /admin/pos/csrf-token` so queued offline sales automatically sync on reconnect with strict UUID deduplication and full audit traceability in `/admin/sales` and `/admin/pos/receipt/{ref}`.
+
+---
+
 ## [v1.0.0] - 2026-11-20
 ### Baseline Release
 - **Public Bistro Website:** Home hero, live `Asia/Manila` Open/Closed status, interactive HTMX Digital Menu (`/menu`), Dine-in Table Reservations (`/reservations`), Gallery (`/gallery`), About & Directions (`Burgos-Osmeña St, Barotac Nuevo, Iloilo · VPW2+QF`), Contact (`/contact`), official Est. 2025 logo & clean single-row navbar.

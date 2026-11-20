@@ -1,196 +1,375 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/admin-layout :: adminPage('POS Terminal', ~{::section})}">
-<section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-    <!-- LEFT: Menu Catalog Picker -->
-    <div class="xl:col-span-7 space-y-4">
-        <div class="bg-white rounded-3xl border border-sand p-5 space-y-4">
-            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                <input id="pos-search" type="search" oninput="filterPosCatalog()"
-                       placeholder="Search dishes by name..."
-                       class="flex-1 rounded-2xl bg-alabaster border border-sand px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
-                <div class="text-xs font-semibold text-forest bg-linen px-4 py-2.5 rounded-2xl tabular-nums whitespace-nowrap">
-                    Today: <span th:text="${salesSummary.formattedTodayRevenue()}">₱0.00</span>
-                    (<span th:text="${salesSummary.todayOrders()}">0</span>)
-                </div>
-            </div>
+<section class="space-y-5">
+    <!-- Store Metadata for Instant Offline Receipts -->
+    <div id="pos-store-meta" class="hidden"
+         th:data-bistro-name="${storeProfile.bistroName()}"
+         th:data-address="${storeProfile.addressLine()}"
+         th:data-plus-code="${storeProfile.plusCode()}"
+         th:data-phone="${storeProfile.phoneNumber()}"
+         th:data-hours="${businessStatus.hoursRange()}"
+         th:data-cashier="${cashierName}"></div>
 
-            <!-- Category Tabs -->
-            <div class="flex flex-wrap gap-2">
-                <button type="button" data-cat="all" onclick="selectPosCategory(this)"
-                        class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-forest text-white border-forest cursor-pointer">
-                    All Categories
-                </button>
-                <button th:each="cat : ${categories}"
-                        type="button"
-                        th:data-cat="${cat.slug}"
-                        onclick="selectPosCategory(this)"
-                        class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-white text-espresso border-sand hover:border-forest cursor-pointer"
-                        th:text="${cat.name}">Category</button>
-            </div>
+    <!-- PWA Online / Offline & Auto-Sync Control Bar -->
+    <div class="no-print bg-white rounded-3xl border border-sand px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div class="flex flex-wrap items-center gap-2.5 text-xs">
+            <span id="conn-pill" class="inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200">
+                <span id="conn-dot" class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                <span id="conn-label">Online · Live POS</span>
+            </span>
+            <span id="queue-pill" class="inline-flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-full bg-linen text-slatewarm border border-sand tabular-nums">
+                <span id="queue-count">0</span> queued offline
+            </span>
+            <span id="sync-feedback" class="hidden text-xs font-semibold text-emerald-800"></span>
         </div>
 
-        <!-- Dish Tiles Grid -->
-        <div id="pos-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-            <button th:each="item : ${menuItems}"
-                    type="button"
-                    th:disabled="${!item.available}"
-                    th:data-id="${item.id}"
-                    th:data-name="${item.name}"
-                    th:data-price="${item.pricePhp}"
-                    th:data-cat="${item.category.slug}"
-                    onclick="addToCart(this)"
-                    th:classappend="${!item.available} ? 'opacity-50 cursor-not-allowed' : 'hover:border-terracotta hover:shadow-md cursor-pointer active:scale-[0.98]'"
-                    class="pos-item-card text-left bg-white rounded-2xl border border-sand overflow-hidden transition-all flex flex-col">
-                <div class="aspect-[16/10] bg-linen relative overflow-hidden">
-                    <img th:src="${item.effectiveImageUrl()}" th:alt="${item.name}" loading="lazy"
-                         class="w-full h-full object-cover">
-                    <span th:if="${!item.available}"
-                          class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-espresso/90 text-white px-2 py-0.5 rounded-full">
-                        Sold Out
-                    </span>
-                    <span th:id="'badge-qty-' + ${item.id}"
-                          class="hidden absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-terracotta text-white text-xs font-bold flex items-center justify-center shadow-sm">
-                        0
-                    </span>
-                </div>
-                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
-                    <div>
-                        <p class="text-[10px] uppercase tracking-wider text-slatewarm font-semibold" th:text="${item.category.name}">Category</p>
-                        <h3 class="font-display text-sm font-semibold text-espresso leading-snug mt-0.5" th:text="${item.name}">Dish</h3>
-                    </div>
-                    <div class="flex items-center justify-between pt-1">
-                        <span class="font-bold text-sm text-forest tabular-nums" th:text="${item.formattedPrice()}">₱195</span>
-                        <span th:if="${item.available}" class="text-[11px] font-semibold text-terracotta">+ Add</span>
-                    </div>
-                </div>
+        <div class="flex flex-wrap items-center gap-2.5 text-xs">
+            <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-alabaster border border-sand cursor-pointer select-none font-medium text-espresso"
+                   title="Test taking offline sales, printing 80mm receipts, and auto-syncing without disconnecting your Wi-Fi">
+                <input id="sim-offline-toggle" type="checkbox" onchange="onOfflineToggleChange()" class="accent-terracotta">
+                <span>Test Offline Mode</span>
+            </label>
+            <button id="sync-now-btn" type="button" onclick="triggerManualSync()"
+                    class="rounded-full bg-forest hover:bg-forest-soft text-white font-semibold px-4 py-1.5 cursor-pointer transition-colors">
+                Sync Now
+            </button>
+            <button type="button" onclick="openOfflineHistoryModal()"
+                    class="rounded-full bg-linen hover:bg-sand text-espresso font-semibold px-4 py-1.5 cursor-pointer transition-colors">
+                Offline Receipts
+            </button>
+            <button id="install-pwa-btn" type="button" onclick="installPosPwa()"
+                    class="hidden rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold px-4 py-1.5 cursor-pointer">
+                Install POS App
             </button>
         </div>
     </div>
 
-    <!-- RIGHT: Active Order Ticket & Checkout -->
-    <div class="xl:col-span-5 bg-white rounded-3xl border border-sand p-6 shadow-xs space-y-5 xl:sticky xl:top-6">
-        <div class="flex items-center justify-between pb-3 border-b border-sand">
-            <div>
-                <h2 class="font-display text-xl font-semibold text-espresso">Current Order Ticket</h2>
-                <p class="text-xs text-slatewarm">Tap dishes on the left to build the receipt.</p>
-            </div>
-            <button type="button" onclick="clearCart()"
-                    class="text-xs font-semibold text-red-700 hover:underline cursor-pointer">Clear</button>
-        </div>
+    <!-- Main POS Grid (Hidden when printing offline receipt) -->
+    <div class="no-print grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <!-- LEFT: Menu Catalog Picker -->
+        <div class="xl:col-span-7 space-y-4">
+            <div class="bg-white rounded-3xl border border-sand p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                    <input id="pos-search" type="search" oninput="filterPosCatalog()"
+                           placeholder="Search dishes by name..."
+                           class="flex-1 rounded-2xl bg-alabaster border border-sand px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                    <div class="text-xs font-semibold text-forest bg-linen px-4 py-2.5 rounded-2xl tabular-nums whitespace-nowrap">
+                        Today: <span id="today-rev-display" th:text="${salesSummary.formattedTodayRevenue()}">₱0.00</span>
+                        (<span id="today-orders-display" th:text="${salesSummary.todayOrders()}">0</span>)
+                    </div>
+                </div>
 
-        <div id="pos-error" class="hidden rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-900 font-medium"></div>
-
-        <!-- Buyer & Order Type Info -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-                <label for="buyerName" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Buyer / Customer Name</label>
-                <input id="buyerName" type="text" placeholder="Walk-in Guest"
-                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
-            </div>
-            <div>
-                <label for="buyerPhone" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Phone (Optional)</label>
-                <input id="buyerPhone" type="tel" placeholder="0917 ..."
-                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
-            </div>
-            <div>
-                <label for="orderType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Order Type</label>
-                <select id="orderType" onchange="toggleTableField()"
-                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
-                    <option th:each="ot : ${orderTypes}" th:value="${ot.name()}" th:text="${ot.label}">Dine-In</option>
-                </select>
-            </div>
-            <div id="tableFieldWrap">
-                <label for="tableNumber" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Table / Area</label>
-                <input id="tableNumber" type="text" value="Table 1" placeholder="Table 1 / Counter"
-                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
-            </div>
-        </div>
-
-        <!-- Cart Lines -->
-        <div id="cart-lines" class="max-h-64 overflow-y-auto divide-y divide-sand border-y border-sand py-2 space-y-1">
-            <p class="py-8 text-center text-xs text-slatewarm">No items in cart yet. Click dishes on the left to add.</p>
-        </div>
-
-        <!-- Discount & Payment Controls -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-                <label for="discountType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Discount</label>
-                <select id="discountType" onchange="onDiscountChange()"
-                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
-                    <option value="NONE">None</option>
-                    <option value="SENIOR_PWD">Senior / PWD (20%)</option>
-                    <option value="CUSTOM">Custom Amount (₱)</option>
-                </select>
-            </div>
-            <div>
-                <label for="paymentMethod" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Payment Method</label>
-                <select id="paymentMethod" onchange="onPaymentMethodChange()"
-                        class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
-                    <option th:each="pm : ${paymentMethods}" th:value="${pm.name()}" th:text="${pm.label}">Cash</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="customDiscountWrap" class="hidden">
-            <label for="customDiscountPhp" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Custom Discount (₱)</label>
-            <input id="customDiscountPhp" type="number" step="0.01" min="0" value="0" oninput="recalcTotals()"
-                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm tabular-nums">
-        </div>
-
-        <!-- Totals Box -->
-        <div class="rounded-2xl bg-alabaster border border-sand p-4 space-y-2 text-sm">
-            <div class="flex justify-between text-slatewarm">
-                <span>Subtotal</span>
-                <span id="summary-subtotal" class="tabular-nums font-medium">₱0.00</span>
-            </div>
-            <div id="summary-discount-row" class="hidden flex justify-between text-emerald-800">
-                <span id="summary-discount-label">Discount</span>
-                <span id="summary-discount" class="tabular-nums font-medium">-₱0.00</span>
-            </div>
-            <div class="flex justify-between text-lg font-display font-bold text-espresso pt-2 border-t border-sand">
-                <span>Total Due</span>
-                <span id="summary-total" class="tabular-nums text-forest">₱0.00</span>
-            </div>
-        </div>
-
-        <!-- Cash Tendered & Quick Denominations -->
-        <div id="cashTenderWrap" class="space-y-2.5">
-            <div class="flex items-center justify-between">
-                <label for="amountTendered" class="text-[11px] font-semibold uppercase tracking-wider text-slatewarm">Cash Received (₱)</label>
-                <div class="flex gap-1.5">
-                    <button type="button" onclick="setExactCash()" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">Exact</button>
-                    <button type="button" onclick="setCash(200)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱200</button>
-                    <button type="button" onclick="setCash(500)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱500</button>
-                    <button type="button" onclick="setCash(1000)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱1,000</button>
+                <!-- Category Tabs -->
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" data-cat="all" onclick="selectPosCategory(this)"
+                            class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-forest text-white border-forest cursor-pointer">
+                        All Categories
+                    </button>
+                    <button th:each="cat : ${categories}"
+                            type="button"
+                            th:data-cat="${cat.slug}"
+                            onclick="selectPosCategory(this)"
+                            class="pos-cat-btn px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-white text-espresso border-sand hover:border-forest cursor-pointer"
+                            th:text="${cat.name}">Category</button>
                 </div>
             </div>
-            <input id="amountTendered" type="number" step="0.01" min="0" placeholder="0.00" oninput="recalcTotals()"
-                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-base font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-terracotta/40">
-            <div class="flex justify-between items-center text-sm font-semibold px-1">
-                <span class="text-slatewarm">Change Due</span>
-                <span id="summary-change" class="tabular-nums text-terracotta text-base">₱0.00</span>
+
+            <!-- Dish Tiles Grid -->
+            <div id="pos-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                <button th:each="item : ${menuItems}"
+                        type="button"
+                        th:disabled="${!item.available}"
+                        th:data-id="${item.id}"
+                        th:data-name="${item.name}"
+                        th:data-price="${item.pricePhp}"
+                        th:data-cat="${item.category.slug}"
+                        onclick="addToCart(this)"
+                        th:classappend="${!item.available} ? 'opacity-50 cursor-not-allowed' : 'hover:border-terracotta hover:shadow-md cursor-pointer active:scale-[0.98]'"
+                        class="pos-item-card text-left bg-white rounded-2xl border border-sand overflow-hidden transition-all flex flex-col">
+                    <div class="aspect-[16/10] bg-linen relative overflow-hidden">
+                        <img th:src="${item.effectiveImageUrl()}" th:alt="${item.name}" loading="lazy"
+                             class="w-full h-full object-cover">
+                        <span th:if="${!item.available}"
+                              class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-espresso/90 text-white px-2 py-0.5 rounded-full">
+                            Sold Out
+                        </span>
+                        <span th:id="'badge-qty-' + ${item.id}"
+                              class="hidden absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-terracotta text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                            0
+                        </span>
+                    </div>
+                    <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider text-slatewarm font-semibold" th:text="${item.category.name}">Category</p>
+                            <h3 class="font-display text-sm font-semibold text-espresso leading-snug mt-0.5" th:text="${item.name}">Dish</h3>
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="font-bold text-sm text-forest tabular-nums" th:text="${item.formattedPrice()}">₱195</span>
+                            <span th:if="${item.available}" class="text-[11px] font-semibold text-terracotta">+ Add</span>
+                        </div>
+                    </div>
+                </button>
             </div>
         </div>
 
-        <div>
-            <input id="orderNotes" type="text" placeholder="Kitchen / receipt notes (optional)..."
-                   class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
-        </div>
+        <!-- RIGHT: Active Order Ticket & Checkout -->
+        <div class="xl:col-span-5 bg-white rounded-3xl border border-sand p-6 shadow-xs space-y-5 xl:sticky xl:top-6">
+            <div class="flex items-center justify-between pb-3 border-b border-sand">
+                <div>
+                    <h2 class="font-display text-xl font-semibold text-espresso">Current Order Ticket</h2>
+                    <p class="text-xs text-slatewarm">Works online &amp; offline — receipts print immediately.</p>
+                </div>
+                <button type="button" onclick="clearCart()"
+                        class="text-xs font-semibold text-red-700 hover:underline cursor-pointer">Clear</button>
+            </div>
 
-        <button id="checkoutBtn" type="button" onclick="submitPosOrder()"
-                class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm shadow-sm transition-colors cursor-pointer">
-            Complete Order &amp; Generate Receipt
-        </button>
+            <div id="pos-error" class="hidden rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-900 font-medium"></div>
+
+            <!-- Buyer & Order Type Info -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="buyerName" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Buyer / Customer Name</label>
+                    <input id="buyerName" type="text" placeholder="Walk-in Guest"
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                </div>
+                <div>
+                    <label for="buyerPhone" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Phone (Optional)</label>
+                    <input id="buyerPhone" type="tel" placeholder="0917 ..."
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                </div>
+                <div>
+                    <label for="orderType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Order Type</label>
+                    <select id="orderType" onchange="toggleTableField()"
+                            class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                        <option th:each="ot : ${orderTypes}" th:value="${ot.name()}" th:text="${ot.label}">Dine-In</option>
+                    </select>
+                </div>
+                <div id="tableFieldWrap">
+                    <label for="tableNumber" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Table / Area</label>
+                    <input id="tableNumber" type="text" value="Table 1" placeholder="Table 1 / Counter"
+                           class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <!-- Cart Lines -->
+            <div id="cart-lines" class="max-h-64 overflow-y-auto divide-y divide-sand border-y border-sand py-2 space-y-1">
+                <p class="py-8 text-center text-xs text-slatewarm">No items in cart yet. Click dishes on the left to add.</p>
+            </div>
+
+            <!-- Discount & Payment Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="discountType" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Discount</label>
+                    <select id="discountType" onchange="onDiscountChange()"
+                            class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                        <option value="NONE">None</option>
+                        <option value="SENIOR_PWD">Senior / PWD (20%)</option>
+                        <option value="CUSTOM">Custom Amount (₱)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="paymentMethod" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Payment Method</label>
+                    <select id="paymentMethod" onchange="onPaymentMethodChange()"
+                            class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm">
+                        <option th:each="pm : ${paymentMethods}" th:value="${pm.name()}" th:text="${pm.label}">Cash</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="customDiscountWrap" class="hidden">
+                <label for="customDiscountPhp" class="block text-[11px] font-semibold uppercase tracking-wider text-slatewarm mb-1">Custom Discount (₱)</label>
+                <input id="customDiscountPhp" type="number" step="0.01" min="0" value="0" oninput="recalcTotals()"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-sm tabular-nums">
+            </div>
+
+            <!-- Totals Box -->
+            <div class="rounded-2xl bg-alabaster border border-sand p-4 space-y-2 text-sm">
+                <div class="flex justify-between text-slatewarm">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal" class="tabular-nums font-medium">₱0.00</span>
+                </div>
+                <div id="summary-discount-row" class="hidden flex justify-between text-emerald-800">
+                    <span id="summary-discount-label">Discount</span>
+                    <span id="summary-discount" class="tabular-nums font-medium">-₱0.00</span>
+                </div>
+                <div class="flex justify-between text-lg font-display font-bold text-espresso pt-2 border-t border-sand">
+                    <span>Total Due</span>
+                    <span id="summary-total" class="tabular-nums text-forest">₱0.00</span>
+                </div>
+            </div>
+
+            <!-- Cash Tendered & Quick Denominations -->
+            <div id="cashTenderWrap" class="space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <label for="amountTendered" class="text-[11px] font-semibold uppercase tracking-wider text-slatewarm">Cash Received (₱)</label>
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="setExactCash()" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">Exact</button>
+                        <button type="button" onclick="setCash(200)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱200</button>
+                        <button type="button" onclick="setCash(500)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱500</button>
+                        <button type="button" onclick="setCash(1000)" class="px-2.5 py-1 rounded-lg bg-linen hover:bg-sand text-[11px] font-semibold cursor-pointer">₱1,000</button>
+                    </div>
+                </div>
+                <input id="amountTendered" type="number" step="0.01" min="0" placeholder="0.00" oninput="recalcTotals()"
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2.5 text-base font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-terracotta/40">
+                <div class="flex justify-between items-center text-sm font-semibold px-1">
+                    <span class="text-slatewarm">Change Due</span>
+                    <span id="summary-change" class="tabular-nums text-terracotta text-base">₱0.00</span>
+                </div>
+            </div>
+
+            <div>
+                <input id="orderNotes" type="text" placeholder="Kitchen / receipt notes (optional)..."
+                       class="w-full rounded-xl bg-alabaster border border-sand px-3 py-2 text-xs">
+            </div>
+
+            <button id="checkoutBtn" type="button" onclick="submitPosOrder()"
+                    class="w-full rounded-full bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 text-sm shadow-sm transition-colors cursor-pointer">
+                Complete Order &amp; Generate Receipt
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable 80mm Offline Receipt Modal -->
+    <div id="offline-receipt-modal"
+         class="print-reset-modal hidden fixed inset-0 z-50 bg-espresso/80 backdrop-blur-xs p-4 overflow-y-auto flex items-center justify-center">
+        <div class="max-w-md w-full space-y-4">
+            <div class="no-print flex items-center justify-between gap-2">
+                <button type="button" onclick="window.print()"
+                        class="rounded-full bg-forest hover:bg-forest-soft text-white text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                    Print 80mm Receipt
+                </button>
+                <button type="button" onclick="closeOfflineReceiptModal()"
+                        class="rounded-full bg-white text-espresso text-xs font-semibold px-5 py-2.5 cursor-pointer">
+                    Next Order →
+                </button>
+            </div>
+            <div id="offline-receipt-paper"
+                 class="receipt-paper bg-white rounded-3xl border border-sand p-7 shadow-xl font-mono text-xs text-espresso space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- Offline Queue & Reprint Drawer Modal -->
+    <div id="offline-history-modal"
+         onclick="if(event.target === this) closeOfflineHistoryModal()"
+         class="no-print hidden fixed inset-0 z-50 bg-espresso/80 backdrop-blur-xs p-4 overflow-y-auto flex items-center justify-center">
+        <div class="max-w-2xl w-full bg-white rounded-3xl border border-sand p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-sand">
+                <div>
+                    <h3 class="font-display text-xl font-semibold text-espresso">Device Offline Receipts &amp; Sync Queue</h3>
+                    <p class="text-xs text-slatewarm">Stored safely in browser IndexedDB until synced to the server.</p>
+                </div>
+                <button type="button" onclick="closeOfflineHistoryModal()"
+                        class="w-8 h-8 rounded-full bg-linen text-espresso font-bold cursor-pointer">×</button>
+            </div>
+            <div id="offline-history-list" class="max-h-96 overflow-y-auto divide-y divide-sand text-xs"></div>
+        </div>
     </div>
 
     <script>
         const cart = new Map();
         let activeCat = 'all';
+        let latestSubtotal = 0;
+        let latestDiscount = 0;
+        let latestDiscountLabel = '';
         let latestTotal = 0;
+        let deferredPwaPrompt = null;
+        let syncInProgress = false;
 
         function formatPhp(n) {
             return '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function isEffectivelyOffline() {
+            const simToggle = document.getElementById('sim-offline-toggle');
+            return !navigator.onLine || (simToggle && simToggle.checked);
+        }
+
+        function updateConnectionUi() {
+            const offline = isEffectivelyOffline();
+            const pill = document.getElementById('conn-pill');
+            const dot = document.getElementById('conn-dot');
+            const label = document.getElementById('conn-label');
+            const btn = document.getElementById('checkoutBtn');
+
+            if (offline) {
+                pill.className = 'inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-950 border border-amber-300';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+                label.textContent = 'Offline Mode · Queuing Locally';
+                if (!btn.disabled) btn.textContent = 'Save Offline & Print Receipt';
+            } else {
+                pill.className = 'inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-600';
+                label.textContent = 'Online · Live POS';
+                if (!btn.disabled) btn.textContent = 'Complete Order & Generate Receipt';
+            }
+        }
+
+        async function refreshQueueBadge() {
+            if (!window.BistroOfflinePos) return;
+            const pending = await window.BistroOfflinePos.listPendingOrders();
+            const countEl = document.getElementById('queue-count');
+            const pill = document.getElementById('queue-pill');
+            countEl.textContent = pending.length;
+            if (pending.length > 0) {
+                pill.className = 'inline-flex items-center gap-1.5 font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 tabular-nums';
+            } else {
+                pill.className = 'inline-flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-full bg-linen text-slatewarm border border-sand tabular-nums';
+            }
+        }
+
+        function showSyncFeedback(text, isError) {
+            const el = document.getElementById('sync-feedback');
+            el.textContent = text;
+            el.className = isError ? 'text-xs font-semibold text-red-700' : 'text-xs font-semibold text-emerald-800';
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 6000);
+        }
+
+        async function triggerManualSync(isAuto) {
+            if (!window.BistroOfflinePos || syncInProgress) return;
+            if (isEffectivelyOffline()) {
+                if (!isAuto) showSyncFeedback('Currently offline — orders will sync automatically when reconnected.', true);
+                return;
+            }
+            const pending = await window.BistroOfflinePos.listPendingOrders();
+            if (!pending.length) {
+                if (!isAuto) showSyncFeedback('All POS orders are already synced.', false);
+                return;
+            }
+
+            syncInProgress = true;
+            const syncBtn = document.getElementById('sync-now-btn');
+            syncBtn.textContent = 'Syncing...';
+            syncBtn.disabled = true;
+
+            try {
+                const res = await window.BistroOfflinePos.syncPendingOrders();
+                await refreshQueueBadge();
+                if (res.todayRevenueFormatted) {
+                    document.getElementById('today-rev-display').textContent = res.todayRevenueFormatted;
+                    document.getElementById('today-orders-display').textContent = res.todayOrdersCount;
+                }
+                const totalDone = (res.syncedCount || 0) + (res.alreadySyncedCount || 0);
+                if (res.failedCount > 0) {
+                    showSyncFeedback(`Synced ${totalDone}, ${res.failedCount} failed — check Offline Receipts.`, true);
+                } else if (totalDone > 0) {
+                    showSyncFeedback(`Synced ${totalDone} offline order(s) to server!`, false);
+                }
+            } catch (err) {
+                if (!isAuto) showSyncFeedback(err.message || 'Sync paused — will retry when online.', true);
+            } finally {
+                syncInProgress = false;
+                syncBtn.textContent = 'Sync Now';
+                syncBtn.disabled = false;
+            }
+        }
+
+        function onOfflineToggleChange() {
+            updateConnectionUi();
+            if (!isEffectivelyOffline()) {
+                triggerManualSync(true);
+            }
         }
 
         function selectPosCategory(btn) {
@@ -235,6 +414,12 @@
         function clearCart() {
             cart.clear();
             document.getElementById('amountTendered').value = '';
+            document.getElementById('buyerName').value = '';
+            document.getElementById('buyerPhone').value = '';
+            document.getElementById('orderNotes').value = '';
+            document.getElementById('discountType').value = 'NONE';
+            document.getElementById('customDiscountPhp').value = '0';
+            document.getElementById('customDiscountWrap').classList.add('hidden');
             hideError();
             renderCart();
         }
@@ -321,6 +506,9 @@
                 discountLabel = 'Custom Discount';
             }
 
+            latestSubtotal = subtotal;
+            latestDiscount = discount;
+            latestDiscountLabel = discountLabel;
             latestTotal = Math.max(subtotal - discount, 0);
 
             document.getElementById('summary-subtotal').textContent = formatPhp(subtotal);
@@ -350,7 +538,142 @@
         }
 
         function escapeHtml(str) {
-            return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+            return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        function buildOfflineOrderRecord(paymentMethod, tendered) {
+            const meta = document.getElementById('pos-store-meta').dataset;
+            const orderType = document.getElementById('orderType').value;
+            const items = Array.from(cart.values()).map(i => ({
+                menuItemId: i.id,
+                itemName: i.name,
+                unitPricePhp: Number(i.price.toFixed(2)),
+                quantity: i.qty,
+                lineTotalPhp: Number((i.price * i.qty).toFixed(2))
+            }));
+            return {
+                clientOrderUuid: window.BistroOfflinePos.generateUuid(),
+                offlineReceiptNumber: window.BistroOfflinePos.generateOfflineReceiptNumber(),
+                createdAtIso: new Date().toISOString(),
+                customerName: document.getElementById('buyerName').value.trim() || 'Walk-in Guest',
+                customerPhone: document.getElementById('buyerPhone').value.trim(),
+                orderType,
+                tableNumber: orderType === 'DINE_IN' ? (document.getElementById('tableNumber').value.trim() || 'Counter') : orderType,
+                paymentMethod,
+                discountType: document.getElementById('discountType').value,
+                discountLabel: latestDiscountLabel,
+                customDiscountPhp: parseFloat(document.getElementById('customDiscountPhp').value) || 0,
+                subtotalPhp: Number(latestSubtotal.toFixed(2)),
+                discountPhp: Number(latestDiscount.toFixed(2)),
+                totalPhp: Number(latestTotal.toFixed(2)),
+                amountTenderedPhp: Number(tendered.toFixed(2)),
+                changePhp: Number(Math.max(tendered - latestTotal, 0).toFixed(2)),
+                notes: document.getElementById('orderNotes').value.trim(),
+                cashierUsername: meta.cashier || 'staff',
+                synced: false,
+                items
+            };
+        }
+
+        async function saveOfflineAndOpenReceipt(paymentMethod, tendered) {
+            const record = buildOfflineOrderRecord(paymentMethod, tendered);
+            await window.BistroOfflinePos.queueOfflineOrder(record);
+            await refreshQueueBadge();
+            clearCart();
+            showOfflineReceiptModal(record);
+        }
+
+        function showOfflineReceiptModal(rec) {
+            const meta = document.getElementById('pos-store-meta').dataset;
+            const dt = new Date(rec.createdAtIso).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+            const itemCount = rec.items.reduce((sum, i) => sum + i.quantity, 0);
+            const itemsHtml = rec.items.map(i => `
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <div class="font-semibold">${i.quantity} × ${escapeHtml(i.itemName)}</div>
+                        <div class="text-[11px] text-slatewarm tabular-nums">@ ${formatPhp(i.unitPricePhp)}</div>
+                    </div>
+                    <div class="font-semibold tabular-nums whitespace-nowrap">${formatPhp(i.lineTotalPhp)}</div>
+                </div>`).join('');
+
+            const badgeText = rec.synced
+                ? `SYNCED · ${escapeHtml(rec.serverReceiptNumber || '')}`
+                : 'OFFLINE RECEIPT · QUEUED FOR SYNC';
+            const badgeClass = rec.synced
+                ? 'bg-emerald-100 text-emerald-900'
+                : 'bg-amber-100 text-amber-950';
+
+            document.getElementById('offline-receipt-paper').innerHTML = `
+                <div class="text-center space-y-1 pb-4 border-b border-dashed border-espresso/30">
+                    <img src="/images/logo.jpg" alt="Logo" class="w-14 h-14 mx-auto rounded-full object-cover border border-sand mb-1">
+                    <div class="font-display text-2xl font-bold text-espresso">${escapeHtml(meta.bistroName)}</div>
+                    <div>${escapeHtml(meta.address)}</div>
+                    <div class="text-[11px] text-slatewarm">Plus Code: ${escapeHtml(meta.plusCode)}</div>
+                    <div class="pt-1.5">
+                        <span class="inline-block px-2.5 py-0.5 rounded font-bold text-[10px] tracking-widest uppercase ${badgeClass}">${badgeText}</span>
+                    </div>
+                </div>
+                <div class="space-y-1 pb-4 border-b border-dashed border-espresso/30">
+                    <div class="flex justify-between"><span class="text-slatewarm">Offline Receipt #:</span><strong>${escapeHtml(rec.offlineReceiptNumber)}</strong></div>
+                    <div class="flex justify-between"><span class="text-slatewarm">Date / Time:</span><span>${escapeHtml(dt)}</span></div>
+                    <div class="flex justify-between"><span class="text-slatewarm">Customer:</span><strong>${escapeHtml(rec.customerName)}</strong></div>
+                    ${rec.customerPhone ? `<div class="flex justify-between"><span class="text-slatewarm">Phone:</span><span>${escapeHtml(rec.customerPhone)}</span></div>` : ''}
+                    <div class="flex justify-between"><span class="text-slatewarm">Service:</span><span>${escapeHtml(rec.orderType)} · ${escapeHtml(rec.tableNumber)}</span></div>
+                    <div class="flex justify-between"><span class="text-slatewarm">Cashier:</span><span>${escapeHtml(rec.cashierUsername)}</span></div>
+                </div>
+                <div class="space-y-2 pb-4 border-b border-dashed border-espresso/30">
+                    <div class="flex justify-between text-[10px] uppercase tracking-wider text-slatewarm font-bold"><span>Item</span><span>Amount</span></div>
+                    ${itemsHtml}
+                </div>
+                <div class="space-y-1.5 pb-4 border-b border-dashed border-espresso/30 tabular-nums">
+                    <div class="flex justify-between"><span class="text-slatewarm">Subtotal (${itemCount} item/s)</span><span>${formatPhp(rec.subtotalPhp)}</span></div>
+                    ${rec.discountPhp > 0 ? `<div class="flex justify-between text-emerald-800"><span>${escapeHtml(rec.discountLabel || 'Discount')}</span><span>-${formatPhp(rec.discountPhp)}</span></div>` : ''}
+                    <div class="flex justify-between text-base font-bold pt-2 border-t border-espresso/15"><span>TOTAL</span><span>${formatPhp(rec.totalPhp)}</span></div>
+                    <div class="flex justify-between pt-1.5"><span class="text-slatewarm">Paid via <strong class="text-espresso">${escapeHtml(rec.paymentMethod)}</strong></span><span>${formatPhp(rec.amountTenderedPhp)}</span></div>
+                    <div class="flex justify-between font-bold"><span>CHANGE</span><span>${formatPhp(rec.changePhp)}</span></div>
+                </div>
+                ${rec.notes ? `<div class="text-[11px] bg-alabaster rounded-xl p-3 border border-sand"><strong>Notes:</strong> ${escapeHtml(rec.notes)}</div>` : ''}
+                <div class="text-center pt-1 space-y-1 text-[11px] text-slatewarm">
+                    <p class="font-semibold text-espresso">Madamo gid nga salamat!</p>
+                    <p>Open Daily · ${escapeHtml(meta.hours)}</p>
+                </div>`;
+
+            document.getElementById('offline-receipt-modal').classList.remove('hidden');
+        }
+
+        function closeOfflineReceiptModal() {
+            document.getElementById('offline-receipt-modal').classList.add('hidden');
+        }
+
+        async function openOfflineHistoryModal() {
+            const list = await window.BistroOfflinePos.listOfflineReceipts();
+            const container = document.getElementById('offline-history-list');
+            if (!list.length) {
+                container.innerHTML = '<p class="py-10 text-center text-slatewarm">No offline receipts recorded on this device yet.</p>';
+            } else {
+                window._cachedOfflineReceipts = list;
+                container.innerHTML = list.map((rec, idx) => `
+                    <div class="py-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono font-bold text-forest">${escapeHtml(rec.offlineReceiptNumber)}</span>
+                                ${rec.synced
+                                    ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900">Synced → ${escapeHtml(rec.serverReceiptNumber || '')}</span>`
+                                    : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950">Queued Offline</span>`}
+                            </div>
+                            <div class="text-slatewarm mt-0.5">${escapeHtml(rec.customerName)} · ${formatPhp(rec.totalPhp)} (${escapeHtml(rec.paymentMethod)})</div>
+                        </div>
+                        <button type="button" onclick="closeOfflineHistoryModal(); showOfflineReceiptModal(window._cachedOfflineReceipts[${idx}]);"
+                                class="rounded-full bg-linen hover:bg-sand text-espresso font-semibold px-3.5 py-1.5 cursor-pointer">
+                            Reprint Receipt
+                        </button>
+                    </div>`).join('');
+            }
+            document.getElementById('offline-history-modal').classList.remove('hidden');
+        }
+
+        function closeOfflineHistoryModal() {
+            document.getElementById('offline-history-modal').classList.add('hidden');
         }
 
         async function submitPosOrder() {
@@ -363,6 +686,13 @@
             const tenderedInput = parseFloat(document.getElementById('amountTendered').value);
             if (paymentMethod === 'CASH' && (isNaN(tenderedInput) || tenderedInput < latestTotal)) {
                 showError('Please enter cash received of at least ' + formatPhp(latestTotal) + ' (or tap Exact).');
+                return;
+            }
+            const effectiveTendered = paymentMethod === 'CASH' ? tenderedInput : latestTotal;
+
+            // Offline path: save immediately to IndexedDB and open printable 80mm receipt
+            if (isEffectivelyOffline()) {
+                await saveOfflineAndOpenReceipt(paymentMethod, effectiveTendered);
                 return;
             }
 
@@ -378,7 +708,7 @@
                 paymentMethod: paymentMethod,
                 discountType: document.getElementById('discountType').value,
                 customDiscountPhp: parseFloat(document.getElementById('customDiscountPhp').value) || 0,
-                amountTenderedPhp: paymentMethod === 'CASH' ? tenderedInput : latestTotal,
+                amountTenderedPhp: effectiveTendered,
                 notes: document.getElementById('orderNotes').value.trim(),
                 items: Array.from(cart.values()).map(i => ({ menuItemId: i.id, quantity: i.qty }))
             };
@@ -398,16 +728,55 @@
                 if (!res.ok) {
                     showError(data.error || 'Could not process order.');
                     btn.disabled = false;
-                    btn.textContent = 'Complete Order & Generate Receipt';
+                    updateConnectionUi();
                     return;
                 }
                 window.location.href = data.redirectUrl;
             } catch (err) {
-                showError('Network error while saving order. Please retry.');
+                // Automatic network-drop failover: save order locally instead of losing the ticket!
                 btn.disabled = false;
-                btn.textContent = 'Complete Order & Generate Receipt';
+                updateConnectionUi();
+                await saveOfflineAndOpenReceipt(paymentMethod, effectiveTendered);
+                showSyncFeedback('Connection dropped mid-checkout — order saved offline and ready to print!', true);
             }
         }
+
+        function installPosPwa() {
+            if (!deferredPwaPrompt) return;
+            deferredPwaPrompt.prompt();
+            deferredPwaPrompt.userChoice.finally(() => {
+                deferredPwaPrompt = null;
+                document.getElementById('install-pwa-btn').classList.add('hidden');
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            document.getElementById('install-pwa-btn').classList.remove('hidden');
+        });
+
+        window.addEventListener('online', () => {
+            updateConnectionUi();
+            triggerManualSync(true);
+        });
+        window.addEventListener('offline', updateConnectionUi);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.BistroOfflinePos) {
+                window.BistroOfflinePos.registerServiceWorker();
+            }
+            updateConnectionUi();
+            await refreshQueueBadge();
+            if (!isEffectivelyOffline()) {
+                // Warm catalog JSON cache in Service Worker and auto-sync any pending orders
+                fetch('/admin/pos/catalog.json', { credentials: 'same-origin' }).catch(() => {});
+                triggerManualSync(true);
+            }
+            setInterval(() => {
+                if (!isEffectivelyOffline()) triggerManualSync(true);
+            }, 30000);
+        });
     </script>
 </section>
 </html>
